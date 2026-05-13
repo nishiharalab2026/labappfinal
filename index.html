@@ -1302,6 +1302,24 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
 </div>
 
 <!-- MODALS -->
+
+<!-- VIDEO PLAYER MODAL -->
+<div class="modal-overlay" id="modal-video" onclick="if(event.target===this)closeVideoModal()">
+  <div class="modal" style="width:780px;max-width:96vw;padding:20px 22px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">
+      <div class="modal-title" id="video-modal-title" style="margin-bottom:0;border:none;padding:0">Video</div>
+      <button class="btn btn-ghost btn-sm" onclick="closeVideoModal()">✕ Close</button>
+    </div>
+    <div id="video-player-wrap" style="width:100%;aspect-ratio:16/9;background:#000;border-radius:4px;overflow:hidden">
+      <iframe id="video-iframe" style="width:100%;height:100%;border:none" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+      <div id="video-modal-meta" style="font-size:12px;color:var(--mid)"></div>
+      <a id="video-open-link" href="#" target="_blank" class="btn btn-ghost btn-sm" style="font-size:12px;text-decoration:none">Open in new tab ↗</a>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-event" onclick="if(event.target===this)closeModal('modal-event')">
   <div class="modal">
     <div class="modal-title">Add Calendar Event</div>
@@ -1808,6 +1826,70 @@ let calYear = 2026, calMonth = 3;
 let _tutFilter = 'all';
 
 function el(id) { return document.getElementById(id); }
+
+// Open a base64 data URL file in a new browser tab instead of downloading
+function openFileInTab(dataUrl, fileName) {
+  if (!dataUrl) return;
+  try {
+    var arr = dataUrl.split(',');
+    var mime = arr[0].match(/:(.*?);/)[1];
+    var bstr = atob(arr[1]);
+    var n = bstr.length;
+    var u8arr = new Uint8Array(n);
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
+    var blob = new Blob([u8arr], { type: mime });
+    var url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch(e) {
+    window.open(dataUrl, '_blank');
+  }
+}
+
+// Convert any YouTube or Google Drive URL to an embeddable src
+function toEmbedUrl(url) {
+  if (!url) return '';
+  // YouTube: various formats → embed
+  var ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/);
+  if (ytMatch) return 'https://www.youtube.com/embed/' + ytMatch[1] + '?autoplay=1&rel=0';
+  // Google Drive: /file/d/ID/view → /file/d/ID/preview
+  var driveMatch = url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
+  if (driveMatch) return 'https://drive.google.com/file/d/' + driveMatch[1] + '/preview';
+  // Vimeo
+  var vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) return 'https://player.vimeo.com/video/' + vimeoMatch[1] + '?autoplay=1';
+  // Already an embed URL or blob — use as-is
+  return url;
+}
+
+function openVideoModal(title, url, meta, fileData, fileName) {
+  var embedUrl = url ? toEmbedUrl(url) : '';
+  // If it's an uploaded video file, create a blob URL
+  if (!embedUrl && fileData) {
+    try {
+      var arr = fileData.split(',');
+      var mime = arr[0].match(/:(.*?);/)[1];
+      var bstr = atob(arr[1]);
+      var n = bstr.length;
+      var u8arr = new Uint8Array(n);
+      while (n--) u8arr[n] = bstr.charCodeAt(n);
+      var blob = new Blob([u8arr], { type: mime });
+      embedUrl = URL.createObjectURL(blob);
+    } catch(e) { embedUrl = fileData; }
+  }
+  if (!embedUrl) { toast('No video URL or file attached.'); return; }
+  el('video-modal-title').textContent = title || 'Video';
+  el('video-modal-meta').textContent = meta || '';
+  el('video-iframe').src = embedUrl;
+  var openLink = el('video-open-link');
+  if (openLink) { openLink.href = url || embedUrl; openLink.style.display = url ? '' : 'none'; }
+  openModal('modal-video');
+}
+
+function closeVideoModal() {
+  el('video-iframe').src = ''; // stops playback
+  closeModal('modal-video');
+}
 function openModal(id) {
   const modal = el(id);
   if (!modal) {
@@ -2147,7 +2229,7 @@ async function initGoogleCalendarClient() {
   }), 8000, 'Google API client did not initialize');
   await withTimeout(gapi.client.init({
     apiKey: cfg.apiKey,
-    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
+    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest','https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
   }), 12000, 'Google Calendar API did not initialize');
   if (!gcalTokenClient) {
     if (!window.google || !google.accounts || !google.accounts.oauth2) throw new Error('Google Identity Services unavailable');
@@ -2863,16 +2945,16 @@ function renderTuts(filter) {
     const hasVideoFile = hasFile && isTutorialVideo(t);
     const level = tagMap[t.level] || ['tag-int','Intermediate'];
     const playBtn = hasVideo
-      ? '<a href="' + esc(t.videoUrl) + '" target="_blank" class="play-overlay" style="text-decoration:none" title="Watch">▶</a>'
-      : (hasVideoFile ? '<a href="' + esc(t.fileData) + '" target="_blank" class="play-overlay" style="text-decoration:none" title="Play uploaded video">▶</a>'
-      : (hasFile ? '<a href="' + esc(t.fileData) + '" download="' + esc(t.fileName) + '" class="play-overlay" style="text-decoration:none;font-size:16px">📥</a>'
+      ? '<button onclick="openVideoModal(\''+esc(t.title)+'\',\''+esc(t.videoUrl)+'\',\''+esc(t.dur)+'\')" class="play-overlay" style="border:none;background:rgba(255,255,255,0.88);cursor:pointer" title="Watch">▶</button>'
+      : (hasVideoFile ? '<button onclick="openVideoModal(\''+esc(t.title)+'\',\'\',\''+esc(t.dur)+'\',S.tutorials['+ri+'].fileData,S.tutorials['+ri+'].fileName)" class="play-overlay" style="border:none;background:rgba(255,255,255,0.88);cursor:pointer" title="Play">▶</button>'
+      : (hasFile ? '<button onclick="openFileInTab(S.tutorials['+ri+'].fileData,S.tutorials['+ri+'].fileName)" class="play-overlay" style="border:none;background:rgba(255,255,255,0.88);cursor:pointer;font-size:16px" title="Open file">📂</button>'
                : '<div class="play-overlay" style="opacity:0.35" title="No content yet">▶</div>'));
     const videoAction = hasVideo
-      ? '<a href="' + esc(t.videoUrl) + '" target="_blank" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;text-decoration:none;font-size:12px">▶ Watch Video</a>'
+      ? '<button onclick="openVideoModal(\''+esc(t.title)+'\',\''+esc(t.videoUrl)+'\',\''+esc(t.dur)+'\')" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:12px">▶ Watch Video</button>'
       : (hasVideoFile
-        ? '<a href="' + esc(t.fileData) + '" target="_blank" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;text-decoration:none;font-size:12px">▶ Play ' + esc(t.fileName) + '</a>'
+        ? '<button onclick="openVideoModal(\''+esc(t.title)+'\',\'\',\''+esc(t.dur)+'\',S.tutorials['+ri+'].fileData,S.tutorials['+ri+'].fileName)" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:12px">▶ Play ' + esc(t.fileName) + '</button>'
         : (hasFile
-        ? '<a href="' + esc(t.fileData) + '" download="' + esc(t.fileName) + '" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;text-decoration:none;font-size:12px">📥 ' + esc(t.fileName) + '</a>'
+        ? '<button onclick="openFileInTab(S.tutorials['+ri+'].fileData,S.tutorials['+ri+'].fileName)" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:12px">📂 Open ' + esc(t.fileName) + '</button>'
         : '<button class="btn btn-primary btn-sm" style="margin-top:8px;font-size:12px;width:100%" data-action="add-tut-url" data-ri="' + ri + '">+ Add Video URL or Upload File</button>'));
     return '<div class="tut-card">' +
       '<button class="tut-del" data-action="delete-tut" data-ri="' + ri + '" title="Delete tutorial">✕</button>' +
@@ -3024,7 +3106,7 @@ function renderProtocols() {
     var tags=(p.tags||[]).map(function(t){return'<span class="tag '+(TAG_COLS[t]||'tag-int')+'">'+esc(t)+'</span>';}).join('');
     var fileBtn='';
     if(p.fileData && p.fileName){
-      fileBtn='<a href="'+p.fileData+'" download="'+esc(p.fileName)+'" class="btn btn-ghost btn-sm" style="text-decoration:none;margin-top:8px;display:inline-flex;align-items:center;gap:4px;font-size:11.5px">📥 '+esc(p.fileName)+'</a> ';
+      fileBtn='<button onclick="openFileInTab(S.protocols['+ri+'].fileData,S.protocols['+ri+'].fileName)" class="btn btn-ghost btn-sm" style="margin-top:8px;display:inline-flex;align-items:center;gap:4px;font-size:11.5px">📂 '+esc(p.fileName)+'</button> ';
     }
     if(p.fileUrl){
       fileBtn+='<a href="'+esc(p.fileUrl)+'" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;margin-top:8px;display:inline-flex;align-items:center;gap:4px;font-size:11.5px">🔗 Open Link ↗</a>';
