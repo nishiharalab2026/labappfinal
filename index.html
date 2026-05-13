@@ -1021,9 +1021,16 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
           <div class="card-title">Upcoming from Google Calendar <span class="card-link" onclick="go('calendar',null)">View all →</span></div>
           <div id="dash-gcal-events"><div style="color:var(--dim);font-size:12.5px;padding:8px 0">Loading events…</div></div>
         </div>
-        <div class="card">
-          <div class="card-title">Equipment Status <span class="card-link" onclick="go('equipment',null)">Book →</span></div>
-          <div id="dash-equip"></div>
+        <div class="card" style="padding:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <button onclick="prevMonth()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--mid);padding:2px 6px">‹</button>
+            <div class="card-title" id="cal-title" style="margin:0;border:none;padding:0;font-size:13px"></div>
+            <button onclick="nextMonth()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--mid);padding:2px 6px">›</button>
+          </div>
+          <div class="cal-grid" id="cal-grid" style="grid-template-columns:repeat(7,1fr);gap:2px">
+            <div class="cal-head">S</div><div class="cal-head">M</div><div class="cal-head">T</div><div class="cal-head">W</div><div class="cal-head">T</div><div class="cal-head">F</div><div class="cal-head">S</div>
+          </div>
+          <div id="upcoming-events" style="margin-top:10px;font-size:12px"></div>
         </div>
       </div>
       <div class="two-col">
@@ -1032,8 +1039,8 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
           <div id="dash-announces"></div>
         </div>
         <div class="card">
-          <div class="card-title">Training Completion</div>
-          <div id="training-bars"></div>
+          <div class="card-title">Equipment Status <span class="card-link" onclick="go('equipment',null)">Book →</span></div>
+          <div id="dash-equip"></div>
         </div>
       </div>
     </div>
@@ -2192,6 +2199,9 @@ function initTimeSelects() {
   }
 }
 
+function memberName(m) { return (m.first + ' ' + m.last).trim(); }
+function memberRoleLabel(role) { return role === 'PI' ? 'Principal Investigator' : role; }
+
 // Calculate member training % from onboarding task completion
 function memberTrainingPct(memberName) {
   var tasks = S.onboardingTasks || [];
@@ -2540,9 +2550,14 @@ async function initGoogleCalendarClient() {
 var _tokenRefreshTimer = null;
 function scheduleTokenRefresh() {
   if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer);
-  // Refresh silently after 50 minutes (tokens last 60 min)
-  _tokenRefreshTimer = setTimeout(function() {
-    silentSignIn();
+  // Silently refresh token after 50 minutes (tokens last 60 min)
+  _tokenRefreshTimer = setTimeout(async function() {
+    if (!gcalTokenClient) return;
+    try {
+      gcalTokenClient.requestAccessToken({ prompt: '' });
+    } catch(e) {
+      console.warn('Token refresh failed:', e);
+    }
   }, 50 * 60 * 1000);
 }
 
@@ -2562,31 +2577,10 @@ async function tryAutoSignIn() {
   var cfg = getGCalConfig();
   if (!cfg.clientId || !cfg.apiKey) return;
   if (window.location.protocol === 'file:') return;
-  try {
-    setGCalStatus('loading', 'Connecting…');
-    await initGoogleCalendarClient();
-    // prompt:'' = silent — no popup, just uses existing session cookie
-    // If Google has a valid session it returns a token instantly via the callback
-    gcalTokenClient.requestAccessToken({ prompt: '' });
-    // Wait up to 8 seconds for silent token
-    await new Promise(function(resolve) {
-      var waited = 0;
-      var check = setInterval(function() {
-        waited += 200;
-        if (gcalAccessToken || waited >= 8000) {
-          clearInterval(check);
-          resolve();
-        }
-      }, 200);
-    });
-    if (!gcalAccessToken) {
-      // Silent login didn't work — show a small reconnect bar instead of error
-      setGCalStatus('error', 'Google Calendar · click to reconnect');
-      showReconnectBar();
-    }
-  } catch(e) {
-    setGCalStatus('error', 'Google Calendar ready · login to sync');
-  }
+  // Don't load Google scripts on every page load — just show reconnect bar
+  // Scripts only load when user explicitly clicks Sign In
+  setGCalStatus('error', 'Google Calendar · click to reconnect');
+  showReconnectBar();
 }
 
 function showReconnectBar() {
@@ -5006,6 +5000,7 @@ function scheduleDriveSave() {
 
 // ── LOCALSTORAGE PERSISTENCE ─────────────────────────────────
 const LS_KEY = 'nishihara_lab_v1';
+const APP_VERSION = 11; // bump when breaking changes require data migration
 const PERSIST_KEYS = ['members','inventory','equipment','tutorials','notebooks','announcements','protocols','training','research','assignments','bookings','reorderLog','usageLog','onboardingTasks','publications','meetings','sdsLibrary','permissions'];
 
 function updateStorageBar() {
@@ -5030,7 +5025,7 @@ function saveToLocal() {
   clearTimeout(_saveTimer);
   _saveTimer = setTimeout(() => {
     try {
-      const data = {_v:10};
+      const data = {_v: APP_VERSION};
       PERSIST_KEYS.forEach(k => { data[k] = S[k]; });
       localStorage.setItem(LS_KEY, JSON.stringify(data));
       updateStorageBar();
@@ -5067,10 +5062,13 @@ function loadFromLocal() {
       return false;
     }
     // For new keys added in updates, keep S defaults if not in stored data
-    // (e.g. sdsLibrary, onboardingTasks added in v8-v10)
     PERSIST_KEYS.forEach(k => {
       if (data[k] !== undefined) S[k] = data[k];
     });
+    // Always ensure permissions object exists with defaults for any missing sections
+    if (!S.permissions) S.permissions = {};
+    var defaultPerms = {publications:['Prof. Nishihara'],meetings:['Prof. Nishihara'],announcements:['Prof. Nishihara'],research:['Prof. Nishihara'],members:['Prof. Nishihara'],inventory:['Prof. Nishihara'],protocols:['Prof. Nishihara'],sds:['Prof. Nishihara'],tutorials:['Prof. Nishihara'],onboarding:['Prof. Nishihara'],notebook:['Prof. Nishihara'],equipment:['Prof. Nishihara'],calendar:['Prof. Nishihara']};
+    Object.keys(defaultPerms).forEach(function(k) { if (!S.permissions[k]) S.permissions[k] = defaultPerms[k]; });
     return true;
   } catch(e) {
     console.warn('localStorage load failed:', e);
@@ -5168,8 +5166,8 @@ if (_ecs) _ecs.addEventListener('click', saveEditCell);
   if (orig) window[fnName] = function(...args) { orig(...args); save(); };
 });
 
-// Attempt silent auto sign-in on every page load
-tryAutoSignIn();
+// Show reconnect bar after page renders (non-blocking)
+setTimeout(tryAutoSignIn, 1500);
 // Apply permissions based on current user
 applyPermissions();
 
