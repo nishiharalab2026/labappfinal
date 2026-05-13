@@ -2232,11 +2232,11 @@ async function initGoogleCalendarClient() {
     if (!window.gapi) { reject(new Error('Step 2 failed: gapi not available after script load')); return; }
     gapi.load('client', resolve);
   }), 8000, 'Step 2 failed: Google API client did not initialize');
-  toast('Step 3/4: Connecting to Calendar & Drive APIs…', 2000);
+  toast('Step 3/4: Connecting to Calendar API…', 2000);
   await withTimeout(gapi.client.init({
     apiKey: cfg.apiKey,
-    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest','https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
-  }), 12000, 'Step 3 failed: API init failed — check your API Key is valid and Calendar + Drive APIs are enabled in Google Cloud Console');
+    discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest']
+  }), 12000, 'Step 3 failed: API init failed — check your API Key is valid and Calendar API is enabled in Google Cloud Console');
   toast('Step 4/4: Setting up login…', 1500);
   if (!gcalTokenClient) {
     if (!window.google || !google.accounts || !google.accounts.oauth2) throw new Error('Step 4 failed: Google Identity Services unavailable');
@@ -4402,31 +4402,24 @@ function setDriveStatus(state, text) {
 // Find or create the labos_data.json file in Drive
 async function getDriveFileId() {
   if (_driveFileId) return _driveFileId;
-  // Search for existing file
-  var res = await gapi.client.request({
-    path: 'https://www.googleapis.com/drive/v3/files',
-    params: {
-      q: "name='" + DRIVE_FILE_NAME + "' and trashed=false",
-      spaces: 'drive',
-      fields: 'files(id,name)'
-    }
+  var res = await fetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent("name='"+DRIVE_FILE_NAME+"' and trashed=false") + '&spaces=drive&fields=files(id,name)', {
+    headers: { 'Authorization': 'Bearer ' + gcalAccessToken }
   });
-  var files = (res.result.files || []);
-  if (files.length > 0) {
-    _driveFileId = files[0].id;
-    return _driveFileId;
-  }
-  // Create new file if not found
-  var meta = await gapi.client.request({
-    path: 'https://www.googleapis.com/drive/v3/files',
+  var data = await res.json();
+  var files = data.files || [];
+  if (files.length > 0) { _driveFileId = files[0].id; return _driveFileId; }
+  // Create new file
+  var create = await fetch('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + gcalAccessToken, 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: DRIVE_FILE_NAME, mimeType: 'application/json' })
   });
-  _driveFileId = meta.result.id;
+  var created = await create.json();
+  _driveFileId = created.id;
   return _driveFileId;
 }
 
-// Upload data to Drive (multipart upload)
+// Upload data to Drive
 async function saveToDrive(data) {
   if (!gcalAccessToken) return;
   try {
@@ -4441,11 +4434,9 @@ async function saveToDrive(data) {
       '--' + boundary + '\r\n' +
       'Content-Type: application/json\r\n\r\n' + body + '\r\n' +
       '--' + boundary + '--';
-    await gapi.client.request({
-      path: 'https://www.googleapis.com/upload/drive/v3/files/' + fileId,
+    await fetch('https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=multipart', {
       method: 'PATCH',
-      params: { uploadType: 'multipart' },
-      headers: { 'Content-Type': 'multipart/related; boundary=' + boundary },
+      headers: { 'Authorization': 'Bearer ' + gcalAccessToken, 'Content-Type': 'multipart/related; boundary=' + boundary },
       body: multipart
     });
     _driveLastSaved = new Date();
@@ -4462,14 +4453,13 @@ async function loadFromDrive() {
   try {
     setDriveStatus('saving', 'Loading from Drive…');
     var fileId = await getDriveFileId();
-    var res = await gapi.client.request({
-      path: 'https://www.googleapis.com/drive/v3/files/' + fileId,
-      params: { alt: 'media' }
+    var res = await fetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media', {
+      headers: { 'Authorization': 'Bearer ' + gcalAccessToken }
     });
-    var data = (typeof res.result === 'string') ? JSON.parse(res.result) : res.result;
+    if (!res.ok) { setDriveStatus('ok', 'Drive connected (no data yet)'); return false; }
+    var data = await res.json();
     if (data && data.members && data.members.length > 0) {
       PERSIST_KEYS.forEach(k => { if (data[k] !== undefined) S[k] = data[k]; });
-      // Also update localStorage cache
       localStorage.setItem(LS_KEY, JSON.stringify(Object.assign({ _v: 10 }, data)));
       setDriveStatus('ok', 'Loaded from Drive ✓');
       return true;
