@@ -2213,26 +2213,29 @@ async function initGoogleCalendarClient() {
     openModal('modal-gcal-auth');
     throw new Error('Missing Google Calendar OAuth Client ID or API key');
   }
-  // Google OAuth does not work over file:// — must be served via http:// or https://
   if (window.location.protocol === 'file:') {
     toast('⚠ Google login requires a web server. Open via http://localhost or a hosted URL, not as a local file.', 6000);
     setGCalStatus('error', 'Needs http:// — not file://');
     throw new Error('Google OAuth requires http:// or https://');
   }
+  toast('Step 1/4: Loading Google scripts…', 2000);
   await withTimeout(Promise.all([
     loadExternalScript('https://accounts.google.com/gsi/client'),
     loadExternalScript('https://apis.google.com/js/api.js')
-  ]), 12000, 'Google scripts did not load');
+  ]), 12000, 'Step 1 failed: Google scripts did not load. Check your internet connection.');
+  toast('Step 2/4: Initializing API client…', 2000);
   await withTimeout(new Promise(function(resolve, reject) {
-    if (!window.gapi) { reject(new Error('Google API client unavailable')); return; }
+    if (!window.gapi) { reject(new Error('Step 2 failed: gapi not available after script load')); return; }
     gapi.load('client', resolve);
-  }), 8000, 'Google API client did not initialize');
+  }), 8000, 'Step 2 failed: Google API client did not initialize');
+  toast('Step 3/4: Connecting to Calendar & Drive APIs…', 2000);
   await withTimeout(gapi.client.init({
     apiKey: cfg.apiKey,
     discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest','https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
-  }), 12000, 'Google Calendar API did not initialize');
+  }), 12000, 'Step 3 failed: API init failed — check your API Key is valid and Calendar + Drive APIs are enabled in Google Cloud Console');
+  toast('Step 4/4: Setting up login…', 1500);
   if (!gcalTokenClient) {
-    if (!window.google || !google.accounts || !google.accounts.oauth2) throw new Error('Google Identity Services unavailable');
+    if (!window.google || !google.accounts || !google.accounts.oauth2) throw new Error('Step 4 failed: Google Identity Services unavailable');
     gcalTokenClient = google.accounts.oauth2.initTokenClient({
       client_id: cfg.clientId,
       scope: GCAL_SCOPE,
@@ -2284,17 +2287,25 @@ async function signInGoogleCalendar() {
     var hint = '';
     if (msg.includes('file:')) {
       hint = 'Open via http://localhost, not as a local file.';
+    } else if (msg.includes('Step 1')) {
+      hint = msg;
+    } else if (msg.includes('Step 2')) {
+      hint = msg;
+    } else if (msg.includes('Step 3')) {
+      hint = msg;
+    } else if (msg.includes('Step 4')) {
+      hint = msg;
     } else if (msg.includes('origin') || msg.includes('redirect') || msg.includes('400')) {
-      hint = 'Add http://localhost:8080 as an Authorized JavaScript Origin in Google Cloud Console.';
+      hint = 'Add https://nishiharalab2026.github.io as an Authorized JavaScript Origin in Google Cloud Console.';
     } else if (msg.includes('API key') || msg.includes('apiKey') || msg.includes('403')) {
-      hint = 'Check your API Key — make sure the Calendar API is enabled in Google Cloud Console.';
+      hint = 'Check your API Key — make sure Calendar and Drive APIs are enabled in Google Cloud Console.';
     } else if (msg.includes('did not load') || msg.includes('unavailable')) {
       hint = 'Could not reach Google servers. Check your internet connection.';
     } else {
       hint = msg;
     }
     setGCalStatus('error', 'Google setup error');
-    toast('⚠ ' + hint, 8000);
+    toast('⚠ ' + hint, 10000);
     console.error('Google Calendar login error:', err);
   }
 }
