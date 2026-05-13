@@ -2474,7 +2474,7 @@ async function addEventToGCal() {
   const clsMap = {event:'cd-blue', meeting:'cd-blue', deadline:'cd-red', booking:'cd-green', seminar:'cd-teal', personal:'cd-purple'};
   S.events.push({ date, label: title, cls: clsMap[type] || 'cd-blue', time, location, desc });
   S.events.sort((a,b) => a.date.localeCompare(b.date));
-  renderCal(); renderUpcoming(); refreshEventStats(); save();
+  renderCal(); renderUpcoming(); refreshEventStats(); updateDashGCal(); save();
   closeModal('modal-event');
   el('ev-title').value = ''; el('ev-date').value = ''; el('ev-desc').value = '';
   if (el('ev-guests')) el('ev-guests').value = '';
@@ -2565,15 +2565,28 @@ function changeMonth(dir) {
 
 function updateDashGCal() {
   const todayMs = new Date(); todayMs.setHours(0,0,0,0);
-  const upcoming = S.gcalEvents.filter(e => new Date(e.date) >= todayMs).slice(0,3);
+  const cols = {cd_blue:'var(--bm)',cd_green:'var(--gm)',cd_amber:'var(--am)',cd_red:'var(--rm)',cd_purple:'#8b6fc4',cd_teal:'var(--tm)'};
+  // Merge local + GCal events, deduplicate by title+date
+  const seen = new Set();
+  const local = S.events.filter(e => new Date(e.date) >= todayMs).map(e => ({
+    title: e.label, date: e.date, time: e.time||'', col: cols[e.cls.replace('-','_')]||'var(--bm)', isGcal: false
+  }));
+  const gcal = (S.gcalEvents||[]).filter(e => new Date(e.date) >= todayMs).map(e => ({
+    title: e.title, date: e.date, time: e.time||'', col: 'var(--bm)', isGcal: true
+  }));
+  const all = [...local, ...gcal]
+    .sort((a,b) => a.date.localeCompare(b.date))
+    .filter(e => { const k = e.title + e.date; if (seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, 5);
   const dge = el('dash-gcal-events');
   if (!dge) return;
-  if (!upcoming.length) { dge.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:6px 0">No upcoming events found.</div>'; return; }
-  dge.innerHTML = upcoming.map(e => {
-    const d = new Date(e.date);
+  if (!all.length) { dge.innerHTML = '<div style="color:var(--dim);font-size:12px;padding:6px 0">No upcoming events. Click + Add Event.</div>'; return; }
+  dge.innerHTML = all.map(e => {
+    const d = new Date(e.date + 'T00:00:00');
     const diff = Math.round((d - todayMs) / 86400000);
-    const pill = diff <= 3 ? '<div class="days-pill urgent">' + diff + 'd</div>' : diff <= 10 ? '<div class="days-pill warn">' + diff + 'd</div>' : '<div class="days-pill ok">' + diff + 'd</div>';
-    return '<div class="deadline-item"><div class="d-stripe" style="background:var(--bm)"></div><div class="deadline-info"><div class="deadline-name">' + e.title + ' <span class="gcal-badge">GCal</span></div><div class="deadline-meta">' + (e.time||'All day') + '</div></div>' + pill + '</div>';
+    const pill = diff === 0 ? '<div class="days-pill ok">Today</div>' : diff <= 3 ? '<div class="days-pill urgent">' + diff + 'd</div>' : diff <= 10 ? '<div class="days-pill warn">' + diff + 'd</div>' : '<div class="days-pill ok">' + diff + 'd</div>';
+    const badge = e.isGcal ? ' <span class="gcal-badge">GCal</span>' : '';
+    return '<div class="deadline-item"><div class="d-stripe" style="background:' + e.col + '"></div><div class="deadline-info"><div class="deadline-name">' + esc(e.title) + badge + '</div><div class="deadline-meta">' + (e.time || 'All day') + '</div></div>' + pill + '</div>';
   }).join('');
 }
 
