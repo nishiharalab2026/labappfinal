@@ -2140,9 +2140,13 @@ function getGCalConfig() {
   };
 }
 function seedGCalConfigDefaults() {
-  localStorage.setItem('labos_gcal_client_id', GCAL_DEFAULT_CLIENT_ID);
-  localStorage.setItem('labos_gcal_api_key_live', GCAL_DEFAULT_API_KEY);
-  localStorage.setItem('labos_gcal_calendar_id', GCAL_CALENDAR_ID);
+  // Always restore defaults if localStorage has empty/missing values
+  if (!localStorage.getItem('labos_gcal_client_id')) localStorage.setItem('labos_gcal_client_id', GCAL_DEFAULT_CLIENT_ID);
+  if (!localStorage.getItem('labos_gcal_api_key_live')) localStorage.setItem('labos_gcal_api_key_live', GCAL_DEFAULT_API_KEY);
+  if (!localStorage.getItem('labos_gcal_calendar_id')) localStorage.setItem('labos_gcal_calendar_id', GCAL_CALENDAR_ID);
+  // If stored values are empty strings (from old bug), overwrite with defaults
+  if (!localStorage.getItem('labos_gcal_client_id').trim()) localStorage.setItem('labos_gcal_client_id', GCAL_DEFAULT_CLIENT_ID);
+  if (!localStorage.getItem('labos_gcal_api_key_live').trim()) localStorage.setItem('labos_gcal_api_key_live', GCAL_DEFAULT_API_KEY);
 }
 function setGCalStatus(state, text) {
   var pill = el('gcal-pill');
@@ -2191,11 +2195,11 @@ function loadExternalScript(src) {
 function saveGCalConfig() {
   var clientId = el('gcal-client-id').value.trim();
   var apiKey = el('gcal-api-key').value.trim();
-  var calendarId = el('gcal-calendar-id').value.trim() || GCAL_CALENDAR_ID;
-  localStorage.setItem('labos_gcal_client_id', clientId);
-  localStorage.setItem('labos_gcal_api_key_live', apiKey);
-  localStorage.setItem('labos_gcal_calendar_id', calendarId);
-  GCAL_CALENDAR_ID = calendarId;
+  var calendarId = el('gcal-calendar-id').value.trim();
+  // Only save if non-empty — never overwrite working credentials with blank fields
+  if (clientId) localStorage.setItem('labos_gcal_client_id', clientId);
+  if (apiKey) localStorage.setItem('labos_gcal_api_key_live', apiKey);
+  if (calendarId) { localStorage.setItem('labos_gcal_calendar_id', calendarId); GCAL_CALENDAR_ID = calendarId; }
   toast('Google Calendar settings saved.');
 }
 function initGCalConfigForm() {
