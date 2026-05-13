@@ -1321,22 +1321,53 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
 </div>
 
 <div class="modal-overlay" id="modal-event" onclick="if(event.target===this)closeModal('modal-event')">
-  <div class="modal">
-    <div class="modal-title">Add Calendar Event</div>
-    <div id="gcal-event-status" style="background:var(--bl);border:1px solid #b8cfea;border-radius:8px;padding:9px 12px;margin-bottom:13px;font-size:12px;color:var(--blue);display:flex;align-items:center;gap:8px"><span>📅</span> This event is saved in LabOS. If Google Calendar is logged in, it will sync there too.</div>
-    <div class="form-group"><label class="form-label">Event Title</label><input class="form-input" id="ev-title" type="text" placeholder="e.g. Lab Meeting, ECS Abstract Deadline…"></div>
-    <div class="form-group"><label class="form-label">Event Type</label>
-      <select class="form-input" id="ev-type"><option value="meeting">Meeting</option><option value="deadline">Deadline</option><option value="booking">Equipment Booking</option><option value="seminar">Seminar / Conference</option><option value="personal">Personal</option></select>
+  <div class="modal" style="width:520px;padding:0;overflow:hidden">
+    <!-- Title input -->
+    <div style="padding:24px 24px 0">
+      <input class="form-input" id="ev-title" type="text" placeholder="Add title" style="font-size:22px;font-family:var(--serif);border:none;border-bottom:2px solid var(--blue);border-radius:0;padding:4px 0;width:100%;outline:none;background:transparent">
     </div>
-    <div class="form-row">
-      <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="ev-date" type="date"></div>
-      <div class="form-group"><label class="form-label">Time (optional)</label><select class="form-input time-select" id="ev-time" data-allow-empty="1"></select></div>
+    <!-- Tabs -->
+    <div style="display:flex;gap:0;padding:14px 24px 0;border-bottom:1px solid var(--border)">
+      <button class="ev-tab active" onclick="setEvTab('event',this)" style="padding:8px 16px 10px;font-size:13px;font-weight:600;border:none;border-bottom:3px solid var(--blue);background:none;cursor:pointer;color:var(--blue);margin-bottom:-1px">Event</button>
+      <button class="ev-tab" onclick="setEvTab('deadline',this)" style="padding:8px 16px 10px;font-size:13px;font-weight:600;border:none;border-bottom:3px solid transparent;background:none;cursor:pointer;color:var(--mid);margin-bottom:-1px">Deadline</button>
+      <button class="ev-tab" onclick="setEvTab('meeting',this)" style="padding:8px 16px 10px;font-size:13px;font-weight:600;border:none;border-bottom:3px solid transparent;background:none;cursor:pointer;color:var(--mid);margin-bottom:-1px">Meeting</button>
     </div>
-    <div class="form-group"><label class="form-label">Description / Notes</label><textarea class="form-input" id="ev-desc" rows="2" placeholder="Agenda, location, instructions…"></textarea></div>
-    <div id="ev-creating" style="display:none;color:var(--mid);font-size:12.5px;text-align:center;padding:6px 0">Creating event in Google Calendar…</div>
-    <div class="form-actions">
+    <!-- Fields -->
+    <div style="padding:16px 24px 20px">
+      <!-- Date & Time row -->
+      <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:18px;width:24px;text-align:center;color:var(--mid)">🕐</span>
+        <div style="flex:1;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <input class="form-input" id="ev-date" type="date" style="flex:1;min-width:140px">
+          <select class="form-input time-select" id="ev-time" style="flex:1;min-width:110px"></select>
+          <span style="color:var(--mid);font-size:13px">–</span>
+          <select class="form-input time-select" id="ev-time-end" style="flex:1;min-width:110px"></select>
+        </div>
+      </div>
+      <!-- Guests row -->
+      <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:18px;width:24px;text-align:center;color:var(--mid)">👥</span>
+        <input class="form-input" id="ev-guests" type="text" placeholder="Add guests (comma separated emails)" style="flex:1;border:none;padding:0;outline:none;background:transparent;font-size:13px">
+      </div>
+      <!-- Location row -->
+      <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:18px;width:24px;text-align:center;color:var(--mid)">📍</span>
+        <input class="form-input" id="ev-location" type="text" placeholder="Add location" style="flex:1;border:none;padding:0;outline:none;background:transparent;font-size:13px">
+      </div>
+      <!-- Description row -->
+      <div style="display:flex;align-items:flex-start;gap:14px;padding:10px 0">
+        <span style="font-size:18px;width:24px;text-align:center;color:var(--mid);margin-top:2px">☰</span>
+        <textarea class="form-input" id="ev-desc" rows="2" placeholder="Add description or Google Drive attachment" style="flex:1;border:none;padding:0;outline:none;background:transparent;font-size:13px;resize:none"></textarea>
+      </div>
+      <!-- GCal sync note -->
+      <div id="gcal-event-status" style="background:var(--bl);border-radius:4px;padding:8px 12px;font-size:11.5px;color:var(--blue);margin-top:4px">
+        📅 Saved in LabOS · syncs to Google Calendar if logged in
+      </div>
+    </div>
+    <!-- Actions -->
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 24px;border-top:1px solid var(--border)">
       <button class="btn btn-ghost" onclick="closeModal('modal-event')">Cancel</button>
-      <button class="btn btn-primary" onclick="addEventToGCal()">Add Event</button>
+      <button class="btn btn-primary" onclick="addEventToGCal()">Save</button>
     </div>
   </div>
 </div>
@@ -1897,6 +1928,18 @@ function openModal(id) {
     return false;
   }
   modal.classList.add('open');
+  // Set today's date and default times when event modal opens
+  if (id === 'modal-event') {
+    var dateEl = el('ev-date');
+    if (dateEl && !dateEl.value) dateEl.value = new Date().toISOString().split('T')[0];
+    var timeEl = el('ev-time');
+    if (timeEl && !timeEl.value) timeEl.value = '14:00';
+    var timeEndEl = el('ev-time-end');
+    if (timeEndEl) {
+      populateTimeSelect(timeEndEl);
+      if (!timeEndEl.value) timeEndEl.value = '15:00';
+    }
+  }
   return true;
 }
 function closeModal(id) {
@@ -2407,35 +2450,53 @@ async function loadGCalEvents() {
   }
 }
 
+var _evType = 'event';
+function setEvTab(type, btn) {
+  _evType = type;
+  document.querySelectorAll('.ev-tab').forEach(t => {
+    t.style.borderBottomColor = 'transparent';
+    t.style.color = 'var(--mid)';
+  });
+  btn.style.borderBottomColor = 'var(--blue)';
+  btn.style.color = 'var(--blue)';
+}
+
 async function addEventToGCal() {
   const title = el('ev-title').value.trim();
   const date = el('ev-date').value;
   const time = el('ev-time').value;
+  const timeEnd = el('ev-time-end') ? el('ev-time-end').value : '';
   const desc = el('ev-desc').value.trim();
-  const type = el('ev-type').value;
+  const location = el('ev-location') ? el('ev-location').value.trim() : '';
+  const guests = el('ev-guests') ? el('ev-guests').value.trim() : '';
+  const type = _evType;
   if (!title || !date) { toast('Please fill in title and date.'); return; }
-  const clsMap = {meeting:'cd-blue',deadline:'cd-red',booking:'cd-green',seminar:'cd-teal',personal:'cd-purple'};
-  S.events.push({ date, label: title, cls: clsMap[type] || 'cd-blue' });
+  const clsMap = {event:'cd-blue', meeting:'cd-blue', deadline:'cd-red', booking:'cd-green', seminar:'cd-teal', personal:'cd-purple'};
+  S.events.push({ date, label: title, cls: clsMap[type] || 'cd-blue', time, location, desc });
   S.events.sort((a,b) => a.date.localeCompare(b.date));
-  S.gcalEvents.push({ title, date, time, description: desc, id: 'local-' + Date.now() });
   renderCal(); renderUpcoming(); refreshEventStats(); save();
   closeModal('modal-event');
-  el('ev-title').value = ''; el('ev-date').value = ''; el('ev-time').value = '';
+  el('ev-title').value = ''; el('ev-date').value = ''; el('ev-desc').value = '';
+  if (el('ev-guests')) el('ev-guests').value = '';
+  if (el('ev-location')) el('ev-location').value = '';
   toast('Event added ✓');
   if (gcalAccessToken) {
     try {
+      var endTime = timeEnd || (time ? addHoursToTime(time, 1) : null);
       var resource = {
         summary: title,
-        description: desc || 'Lab event',
+        description: (desc || '') + (location ? '\nLocation: ' + location : ''),
+        location: location || undefined,
         start: time ? {dateTime: date + 'T' + time + ':00', timeZone:'Asia/Tokyo'} : {date: date},
-        end: time ? {dateTime: date + 'T' + addHoursToTime(time, 1) + ':00', timeZone:'Asia/Tokyo'} : {date: dateKey(new Date(new Date(date).getTime() + 86400000))}
+        end: endTime ? {dateTime: date + 'T' + endTime + ':00', timeZone:'Asia/Tokyo'} : {date: dateKey(new Date(new Date(date).getTime() + 86400000))}
       };
+      if (guests) {
+        resource.attendees = guests.split(',').map(g => ({ email: g.trim() })).filter(g => g.email);
+      }
       await insertGoogleCalendarEvent(resource);
       loadGCalEvents();
       toast('Event synced to Google Calendar ✓');
     } catch(e) { console.log('GCal push failed', e); toast('Event saved locally. Google sync failed.'); }
-  } else {
-    toast('Event saved in LabOS. Login to Google Calendar when you want to sync.');
   }
 }
 
@@ -2464,7 +2525,11 @@ function renderCal() {
     S.events.filter(e => e.date === ds).forEach(e => { html += '<span class="cal-dot ' + e.cls + '">' + e.label + '</span>'; });
     S.gcalEvents.filter(e => e.date === ds).forEach(e => { html += '<span class="cal-dot cd-blue gcal-event">' + e.title + '</span>'; });
     cell.innerHTML = html;
-    cell.onclick = () => openModal('modal-event');
+    cell.onclick = () => {
+      var dateEl = el('ev-date');
+      if (dateEl) dateEl.value = ds;
+      openModal('modal-event');
+    };
     grid.appendChild(cell);
   }
   const trailing = (first + days) % 7 === 0 ? 0 : 7 - (first + days) % 7;
