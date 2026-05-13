@@ -2344,19 +2344,40 @@ async function tryAutoSignIn() {
   if (!cfg.clientId || !cfg.apiKey) return;
   if (window.location.protocol === 'file:') return;
   try {
-    setGCalStatus('loading', 'Signing in…');
+    setGCalStatus('loading', 'Connecting…');
     await initGoogleCalendarClient();
-    // Use prompt:'' for silent login — works if user already granted consent before
+    // prompt:'' = silent — no popup, just uses existing session cookie
+    // If Google has a valid session it returns a token instantly via the callback
     gcalTokenClient.requestAccessToken({ prompt: '' });
-    // Set a short timeout — if no token after 5s, it needs manual login
-    setTimeout(function() {
-      if (!gcalAccessToken) {
-        setGCalStatus('error', 'Google Calendar ready · login to sync');
-      }
-    }, 5000);
+    // Wait up to 8 seconds for silent token
+    await new Promise(function(resolve) {
+      var waited = 0;
+      var check = setInterval(function() {
+        waited += 200;
+        if (gcalAccessToken || waited >= 8000) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 200);
+    });
+    if (!gcalAccessToken) {
+      // Silent login didn't work — show a small reconnect bar instead of error
+      setGCalStatus('error', 'Google Calendar · click to reconnect');
+      showReconnectBar();
+    }
   } catch(e) {
     setGCalStatus('error', 'Google Calendar ready · login to sync');
   }
+}
+
+function showReconnectBar() {
+  var existing = el('reconnect-bar');
+  if (existing) return;
+  var bar = document.createElement('div');
+  bar.id = 'reconnect-bar';
+  bar.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:var(--blue);color:#fff;text-align:center;padding:10px 16px;font-size:13px;font-weight:500;z-index:150;display:flex;align-items:center;justify-content:center;gap:12px';
+  bar.innerHTML = '🔗 Reconnect to Google Calendar & Drive to sync lab data <button onclick="signInGoogleCalendar();this.parentElement.remove()" style="background:#fff;color:var(--blue);border:none;border-radius:4px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;margin-left:8px">Sign In</button><button onclick="this.parentElement.remove()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;font-size:18px;padding:0 4px">✕</button>';
+  document.body.appendChild(bar);
 }
 
 async function signInGoogleCalendar() {
