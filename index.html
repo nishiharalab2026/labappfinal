@@ -903,9 +903,9 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
 
 <aside class="sidebar">
   <div class="logo">
-    <div class="logo-name editable" id="lab-name" onclick="editCell('Edit Lab Name','Lab name','Nishihara Laboratory',v=>{document.getElementById('lab-name').textContent=v;})">Nishihara Laboratory</div>
-    <div class="logo-sub editable" id="lab-sub" onclick="editCell('Edit Affiliation','University / affiliation','Kyushu University · IRCHE',v=>{document.getElementById('lab-sub').textContent=v;})">Kyushu University · IRCHE</div>
-    <div class="logo-tag editable" id="lab-tag" onclick="editCell('Edit Research Tag','Research focus tag','PEFC & Electrolyzer',v=>{document.getElementById('lab-tag').textContent=v;})">PEFC &amp; Electrolyzer</div>
+    <div class="logo-name" id="lab-name">Nishihara Laboratory</div>
+    <div class="logo-sub" id="lab-sub">Kyushu University · IRCHE</div>
+    <div class="logo-tag" id="lab-tag">PEFC &amp; Electrolyzer</div>
   </div>
   <div class="nav-sec">
     <div class="nav-lbl" data-num="I.">Overview</div>
@@ -1081,8 +1081,8 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
     <div id="page-research" class="page">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:18px">
         <div>
-          <div style="font-family:'Lora',serif;font-size:15px;font-weight:600;margin-bottom:5px" class="editable" onclick="editCell('Edit Tagline','Research tagline',this.textContent,v=>this.textContent=v)">Polymer Materials for Hydrogen Energy Devices</div>
-          <div style="font-size:12.5px;color:var(--mid);line-height:1.7" class="editable" onclick="editCell('Edit Description','Lab description',this.textContent,v=>this.textContent=v)">高分子電解質燃料電池・水電解装置に向けた高分子材料開発 — Developing polymer electrolyte materials for next-generation fuel cells and water electrolyzers at Kyushu University, Fukuoka, Japan.</div>
+          <div style="font-family:'Lora',serif;font-size:15px;font-weight:600;margin-bottom:5px" >Polymer Materials for Hydrogen Energy Devices</div>
+          <div style="font-size:12.5px;color:var(--mid);line-height:1.7" >高分子電解質燃料電池・水電解装置に向けた高分子材料開発 — Developing polymer electrolyte materials for next-generation fuel cells and water electrolyzers at Kyushu University, Fukuoka, Japan.</div>
         </div>
         <button class="btn btn-primary" style="margin-left:16px;flex-shrink:0" onclick="openModal('modal-research')">+ Add Topic</button>
       </div>
@@ -1302,6 +1302,18 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
 </div>
 
 <!-- MODALS -->
+
+<!-- EDIT FIELDS MODAL -->
+<div class="modal-overlay" id="modal-edit-fields" onclick="if(event.target===this)closeModal('modal-edit-fields')">
+  <div class="modal" style="width:480px">
+    <div class="modal-title" id="edit-fields-title">Edit</div>
+    <div id="edit-fields-body"></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal('modal-edit-fields')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditFields()">Save</button>
+    </div>
+  </div>
+</div>
 
 <!-- VIDEO PLAYER MODAL -->
 <div class="modal-overlay" id="modal-video" onclick="if(event.target===this)closeVideoModal()">
@@ -1921,6 +1933,141 @@ function closeVideoModal() {
   el('video-iframe').src = ''; // stops playback
   closeModal('modal-video');
 }
+// ── UNIVERSAL EDIT MODAL ─────────────────────────────────────
+function openEditModal(section, ri) {
+  var s = section, i = ri;
+  if (s === 'member') {
+    var m = S.members[i]; if (!m) return;
+    editFields([
+      {label:'First Name', val:m.first, key:'first'},
+      {label:'Last Name', val:m.last, key:'last'},
+      {label:'Email', val:m.email, key:'email'},
+      {label:'Role (PI/Postdoc/PhD/Master)', val:m.role, key:'role'},
+      {label:'Research Focus', val:m.focus, key:'focus'},
+      {label:'Training % (0-100)', val:m.prog, key:'prog', type:'number'}
+    ], function(vals) {
+      Object.assign(S.members[i], vals);
+      S.members[i].prog = Math.min(100, Math.max(0, parseInt(vals.prog)||0));
+      var p = vals.first[0]||''; var l = vals.last ? vals.last[0] : '';
+      S.members[i].init = (p+l).toUpperCase();
+      renderMembers(); save(); toast('Member updated ✓');
+    }, 'Edit Member');
+  } else if (s === 'inventory') {
+    var r = S.inventory[i]; if (!r) return;
+    editFields([
+      {label:'Name', val:r.name, key:'name'},
+      {label:'Vendor', val:r.vendor, key:'vendor'},
+      {label:'Catalog #', val:r.cat, key:'cat'},
+      {label:'Location', val:r.loc, key:'loc'},
+      {label:'Quantity', val:r.qty, key:'qty', type:'number'},
+      {label:'Unit (bottles/g/mL…)', val:r.unit, key:'unit'},
+      {label:'Stock (high/mid/low)', val:r.stock, key:'stock'},
+      {label:'Expiry', val:r.exp, key:'exp'}
+    ], function(vals) {
+      Object.assign(S.inventory[i], vals);
+      S.inventory[i].qty = parseFloat(vals.qty)||0;
+      renderInventory(); save(); toast('Item updated ✓');
+    }, 'Edit Inventory Item');
+  } else if (s === 'sds') {
+    var sd = S.sdsLibrary[i]; if (!sd) return;
+    editFields([
+      {label:'Chemical Name', val:sd.name, key:'name'},
+      {label:'CAS Number', val:sd.casNo, key:'casNo'},
+      {label:'Hazard', val:sd.hazard, key:'hazard'},
+      {label:'Location', val:sd.loc, key:'loc'},
+      {label:'SDS URL', val:sd.sdsUrl, key:'sdsUrl'}
+    ], function(vals) {
+      Object.assign(S.sdsLibrary[i], vals);
+      renderSDS(); save(); toast('SDS updated ✓');
+    }, 'Edit SDS Entry');
+  } else if (s === 'notebook') {
+    var nb = S.notebooks[i]; if (!nb) return;
+    editFields([
+      {label:'Title', val:nb.title, key:'title'},
+      {label:'Topic', val:nb.topic, key:'topic'},
+      {label:'Notes', val:nb.body, key:'body', multiline:true}
+    ], function(vals) {
+      Object.assign(S.notebooks[i], vals);
+      renderNB(); save(); toast('Entry updated ✓');
+    }, 'Edit Notebook Entry');
+  } else if (s === 'announcement') {
+    var an = S.announcements[i]; if (!an) return;
+    editFields([
+      {label:'Title', val:an.title, key:'title'},
+      {label:'Message', val:an.body, key:'body', multiline:true}
+    ], function(vals) {
+      Object.assign(S.announcements[i], vals);
+      renderAnnouncements(); save(); toast('Announcement updated ✓');
+    }, 'Edit Announcement');
+  } else if (s === 'equipment') {
+    var eq = S.equipment[i]; if (!eq) return;
+    editFields([
+      {label:'Name', val:eq.name, key:'name'},
+      {label:'Model / ID', val:eq.id, key:'id'},
+      {label:'Room / Location', val:eq.room, key:'room'},
+      {label:'Icon (emoji)', val:eq.icon, key:'icon'}
+    ], function(vals) {
+      Object.assign(S.equipment[i], vals);
+      renderEquip(); save(); toast('Equipment updated ✓');
+    }, 'Edit Equipment');
+  } else if (s === 'protocol') {
+    var pr = S.protocols[i]; if (!pr) return;
+    editFields([
+      {label:'Name', val:pr.name, key:'name'},
+      {label:'SOP ID & version', val:pr.meta, key:'meta'},
+      {label:'Description', val:pr.desc, key:'desc', multiline:true},
+      {label:'Link (URL)', val:pr.fileUrl||'', key:'fileUrl'}
+    ], function(vals) {
+      Object.assign(S.protocols[i], vals);
+      renderProtocols(); save(); toast('Protocol updated ✓');
+    }, 'Edit Protocol');
+  } else if (s === 'research') {
+    var rs = S.research[i]; if (!rs) return;
+    editFields([
+      {label:'Title', val:rs.title, key:'title'},
+      {label:'Japanese subtitle', val:rs.jp, key:'jp'},
+      {label:'Description', val:rs.body, key:'body', multiline:true},
+      {label:'Icon (emoji)', val:rs.icon, key:'icon'}
+    ], function(vals) {
+      Object.assign(S.research[i], vals);
+      renderResearch(); save(); toast('Research topic updated ✓');
+    }, 'Edit Research Topic');
+  }
+}
+
+// Generic multi-field edit modal
+var _editModalCallback = null;
+function editFields(fields, callback, title) {
+  _editModalCallback = callback;
+  var m = el('modal-edit-fields');
+  if (!m) return;
+  el('edit-fields-title').textContent = title || 'Edit';
+  var body = el('edit-fields-body');
+  body.innerHTML = fields.map(function(f) {
+    var inp = f.multiline
+      ? '<textarea class="form-input" id="ef-'+f.key+'" rows="3" style="resize:vertical">'+esc(f.val||'')+'</textarea>'
+      : '<input class="form-input" id="ef-'+f.key+'" type="'+(f.type||'text')+'" value="'+esc(f.val||'')+'">';
+    return '<div class="form-group"><label class="form-label">'+f.label+'</label>'+inp+'</div>';
+  }).join('');
+  // Store field keys
+  m.dataset.fields = JSON.stringify(fields.map(function(f){return f.key;}));
+  openModal('modal-edit-fields');
+  // Focus first input
+  setTimeout(function(){ var first = body.querySelector('input,textarea'); if(first) first.focus(); }, 100);
+}
+
+function saveEditFields() {
+  var m = el('modal-edit-fields'); if (!m) return;
+  var keys = JSON.parse(m.dataset.fields || '[]');
+  var vals = {};
+  keys.forEach(function(k) {
+    var el2 = document.getElementById('ef-'+k);
+    if (el2) vals[k] = el2.value;
+  });
+  if (_editModalCallback) _editModalCallback(vals);
+  closeModal('modal-edit-fields');
+}
+
 function openModal(id) {
   const modal = el(id);
   if (!modal) {
@@ -2627,16 +2774,19 @@ function renderMembers(filter) {
     const roleCls = roleMap[m.role] || 'r-phd';
     return '<tr>' +
       '<td><div class="member-cell">' +
-        '<div class="av ' + m.av + '" style="cursor:pointer" onclick="editCell(\'Edit Initials\',\'2 characters\',\'' + esc(m.init) + '\',function(v){S.members[' + ri + '].init=v.substring(0,2).toUpperCase();renderMembers();})">' + esc(m.init) + '</div>' +
+        '<div class="av ' + m.av + '">' + esc(m.init) + '</div>' +
         '<div>' +
-          '<div class="mem-name editable" onclick="editCell(\'Edit Name\',\'Full name\',\'' + esc(m.first + ' ' + m.last) + '\',function(v){var p=v.trim().split(\' \');S.members[' + ri + '].first=p[0];S.members[' + ri + '].last=p.slice(1).join(\' \');S.members[' + ri + '].init=(p[0][0]+(p[1]?p[1][0]:\'\')).toUpperCase();S.members[' + ri + '].av=\'' + avMap[m.role] + '\';renderMembers();})">' + esc(m.first + ' ' + m.last) + '</div>' +
-          '<div class="mem-email editable" onclick="editCell(\'Edit Email\',\'Email address\',\'' + esc(m.email) + '\',function(v){S.members[' + ri + '].email=v;renderMembers();})">' + esc(m.email || '—') + '</div>' +
+          '<div class="mem-name">' + esc(m.first + ' ' + m.last) + '</div>' +
+          '<div class="mem-email">' + esc(m.email || '—') + '</div>' +
         '</div></div></td>' +
-      '<td><span class="role-pill ' + roleCls + ' editable" onclick="editCell(\'Edit Role\',\'PI / Postdoc / PhD / Master\',\'' + esc(m.role) + '\',function(v){S.members[' + ri + '].role=v;renderMembers();})">' + esc(m.role) + '</span></td>' +
-      '<td class="editable" style="font-size:12px;color:var(--mid);max-width:160px" onclick="editCell(\'Edit Research Focus\',\'Research focus\',\'' + esc(m.focus) + '\',function(v){S.members[' + ri + '].focus=v;renderMembers();})">' + esc(m.focus) + '</td>' +
-      '<td><div class="mini-bar-wrap"><div class="mini-track"><div class="mini-fill" style="width:' + m.prog + '%;background:' + pc + '"></div></div><span class="mini-pct editable" onclick="editCell(\'Training %\',\'0 to 100\',\'' + m.prog + '\',function(v){S.members[' + ri + '].prog=Math.min(100,Math.max(0,parseInt(v)||0));renderMembers();})">' + m.prog + '%</span></div></td>' +
+      '<td><span class="role-pill ' + roleCls + '">' + esc(m.role) + '</span></td>' +
+      '<td style="font-size:12px;color:var(--mid);max-width:160px">' + esc(m.focus) + '</td>' +
+      '<td><div class="mini-bar-wrap"><div class="mini-track"><div class="mini-fill" style="width:' + m.prog + '%;background:' + pc + '"></div></div><span class="mini-pct">' + m.prog + '%</span></div></td>' +
       '<td><span class="chip" style="background:' + statusBg + ';color:' + statusCol + ';cursor:pointer" title="Click to toggle" onclick="S.members[' + ri + '].status=S.members[' + ri + '].status===\'Active\'?\'Training\':\'Active\';renderMembers();toast(\'Status updated ✓\');">' + esc(m.status) + '</span></td>' +
-      '<td><button class="btn btn-danger btn-sm" onclick="if(confirm(\'Remove ' + esc(m.first) + '?\')){S.members.splice(' + ri + ',1);renderMembers();toast(\'Removed.\');}">Remove</button></td>' +
+      '<td><div class="row-actions">' +
+      '<button class="btn btn-ghost btn-sm" onclick="openEditModal(\'member\',' + ri + ')">Edit</button>' +
+      '<button class="btn btn-danger btn-sm" onclick="if(confirm(\'Remove ' + esc(m.first) + '?\')){S.members.splice(' + ri + ',1);renderMembers();toast(\'Removed.\');}">Remove</button>' +
+      '</div></td>' +
       '</tr>';
   }).join('');
   renderLoginUsers();
@@ -2676,15 +2826,15 @@ function renderInventory(filter) {
       ? '<button class="btn btn-primary btn-sm" onclick="submitReorder(' + ri + ')">🛒 Reorder</button>'
       : '<button class="btn btn-ghost btn-sm" onclick="logUsage(' + ri + ')">📝 Log Use</button>';
     return '<tr>' +
-      '<td><div class="editable" style="font-weight:500" onclick="editCell(\'Material Name\',\'Name\',\'' + esc(r.name) + '\',function(v){S.inventory[' + ri + '].name=v;renderInventory();})">' + esc(r.name) + '</div>' +
-           '<div class="editable" style="font-size:11px;color:var(--dim)" onclick="editCell(\'Vendor\',\'Supplier\',\'' + esc(r.vendor) + '\',function(v){S.inventory[' + ri + '].vendor=v;renderInventory();})">' + esc(r.vendor) + '</div></td>' +
-      '<td class="editable" style="font-size:11px;color:var(--dim);font-family:monospace" onclick="editCell(\'Catalog #\',\'Cat. number\',\'' + esc(r.cat) + '\',function(v){S.inventory[' + ri + '].cat=v;renderInventory();})">' + esc(r.cat) + '</td>' +
-      '<td class="editable" style="font-size:12px;color:var(--mid)" onclick="editCell(\'Location\',\'Storage location\',\'' + esc(r.loc) + '\',function(v){S.inventory[' + ri + '].loc=v;renderInventory();})">' + esc(r.loc) + '</td>' +
-      '<td><div class="editable" style="font-size:12px;font-weight:600;color:var(--ink)" onclick="editCell(\'Quantity\',\'Number on hand\',\'' + esc(qty) + '\',function(v){S.inventory[' + ri + '].qty=Math.max(0,parseFloat(v)||0);renderInventory();})">' + esc(qtyLabel) + '</div>' +
-           '<div class="editable" style="font-size:10.5px;color:var(--dim);margin-top:2px" onclick="editCell(\'Unit\',\'bottles, packs, g, mL...\',\'' + esc(unit) + '\',function(v){S.inventory[' + ri + '].unit=v.trim();renderInventory();})">' + esc(unit || 'unit') + '</div></td>' +
-      '<td><div class="stock-wrap"><div class="stock-track"><div class="stock-fill ' + s.cls + '" style="width:' + s.w + '%"></div></div><span class="editable" style="font-size:11px;font-weight:600;color:' + s.color + '" onclick="editCell(\'Stock Level\',\'high / mid / low\',\'' + r.stock + '\',function(v){if([\'high\',\'mid\',\'low\'].includes(v)){S.inventory[' + ri + '].stock=v;renderInventory();}})">' + s.label + '</span></div></td>' +
-      '<td class="editable" style="font-size:11.5px;color:var(--mid)" onclick="editCell(\'Expiry\',\'Date or —\',\'' + esc(r.exp) + '\',function(v){S.inventory[' + ri + '].exp=v;renderInventory();})">' + esc(r.exp) + '</td>' +
-      '<td><div style="display:flex;gap:4px">' + actionBtn + '<button class="btn btn-danger btn-sm" onclick="if(confirm(\'Delete ' + esc(r.name) + '?\')){S.inventory.splice(' + ri + ',1);renderInventory();toast(\'Removed.\');}">✕</button></div></td>' +
+      '<td><div style="font-weight:500">' + esc(r.name) + '</div>' +
+           '<div style="font-size:11px;color:var(--dim)">' + esc(r.vendor) + '</div></td>' +
+      '<td style="font-size:11px;color:var(--dim);font-family:monospace">' + esc(r.cat) + '</td>' +
+      '<td style="font-size:12px;color:var(--mid)">' + esc(r.loc) + '</td>' +
+      '<td><div style="font-size:12px;font-weight:600;color:var(--ink)">' + esc(qtyLabel) + '</div>' +
+           '<div style="font-size:10.5px;color:var(--dim);margin-top:2px">' + esc(unit || 'unit') + '</div></td>' +
+      '<td><div class="stock-wrap"><div class="stock-track"><div class="stock-fill ' + s.cls + '" style="width:' + s.w + '%"></div></div><span style="font-size:11px;font-weight:600;color:' + s.color + '">' + s.label + '</span></div></td>' +
+      '<td style="font-size:11.5px;color:var(--mid)">' + esc(r.exp) + '</td>' +
+      '<td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openEditModal(\'inventory\',' + ri + ')">Edit</button>' + actionBtn + '<button class="btn btn-danger btn-sm" onclick="if(confirm(\'Delete ' + esc(r.name) + '?\')){S.inventory.splice(' + ri + ',1);renderInventory();toast(\'Removed.\');}">✕</button></div></td>' +
       '</tr>';
   }).join('');
 }
@@ -2822,9 +2972,10 @@ function renderEquip(filter) {
       : '';
     return '<div class="equip-card">' +
       '<button class="equip-del" onclick="if(confirm(\'Remove ' + esc(e.name) + '?\')){S.equipment.splice(' + ri + ',1);renderEquip();toast(\'Removed.\');}">✕</button>' +
-      '<div class="equip-card-icon editable" onclick="editCell(\'Edit Icon\',\'Emoji\',\'' + esc(e.icon) + '\',function(v){S.equipment[' + ri + '].icon=v;renderEquip();})">' + e.icon + '</div>' +
-      '<div class="equip-card-name editable" onclick="editCell(\'Edit Name\',\'Equipment name\',\'' + esc(e.name) + '\',function(v){S.equipment[' + ri + '].name=v;renderEquip();})">' + esc(e.name) + '</div>' +
-      '<div class="equip-card-id"><span class="editable" onclick="editCell(\'Edit Model\',\'Model/spec\',\'' + esc(e.id) + '\',function(v){S.equipment[' + ri + '].id=v;renderEquip();})">' + esc(e.id) + '</span> · <span class="editable" onclick="editCell(\'Edit Room\',\'Location\',\'' + esc(e.room) + '\',function(v){S.equipment[' + ri + '].room=v;renderEquip();})">' + esc(e.room) + '</span></div>' +
+      '<button class="btn btn-ghost btn-sm" style="position:absolute;top:10px;right:32px;font-size:11px;opacity:0;transition:opacity 0.12s" class="equip-edit-btn" onclick="openEditModal(\'equipment\',' + ri + ')">Edit</button>' +
+      '<div class="equip-card-icon">' + e.icon + '</div>' +
+      '<div class="equip-card-name">' + esc(e.name) + '</div>' +
+      '<div class="equip-card-id">' + esc(e.id) + ' · ' + esc(e.room) + '</div>' +
       '<div class="equip-status-row"><div class="status-dot ' + dot + '"></div>' +
       '<span class="status-txt" title="Derived from LabOS bookings and Google Calendar">' + esc(statusTxt) + '</span></div>' +
       bookingList +
@@ -3117,18 +3268,14 @@ function renderTuts(filter) {
       '<button class="tut-del" data-action="delete-tut" data-ri="' + ri + '" title="Delete tutorial">✕</button>' +
       '<button class="tut-edit" data-action="add-tut-url" data-ri="' + ri + '" title="Edit tutorial">Edit</button>' +
       '<div class="tut-thumb" style="background:' + t.bg + '">' +
-        '<span style="font-size:34px;cursor:pointer" onclick="editCell(\'Edit Icon\',\'Emoji\',\'' + esc(t.icon) + '\',function(v){S.tutorials[' + ri + '].icon=v;renderTuts();})">' + t.icon + '</span>' +
+        '<span style="font-size:34px">' + t.icon + '</span>' +
         playBtn +
       '</div>' +
       '<div class="tut-body">' +
-        '<div class="tut-title editable" onclick="editCell(\'Edit Title\',\'Title\',\'' + esc(t.title) + '\',function(v){S.tutorials[' + ri + '].title=v;renderTuts();})">' + esc(t.title) + '</div>' +
+        '<div class="tut-title">' + esc(t.title) + '</div>' +
         '<div class="tut-meta">' +
-          '<span class="tut-dur editable" onclick="editCell(\'Duration\',\'e.g. 35 min\',\'' + esc(t.dur) + '\',function(v){S.tutorials[' + ri + '].dur=v;renderTuts();})">⏱ ' + esc(t.dur) + '</span>' +
+          '<span class="tut-dur">⏱ ' + esc(t.dur) + '</span>' +
           '<span class="tag ' + level[0] + '">' + level[1] + '</span>' +
-        '</div>' +
-        '<div style="display:flex;align-items:center;gap:6px;margin-top:8px">' +
-          '<div class="prog-track" style="flex:1"><div class="prog-fill" style="width:' + t.prog + '%;background:var(--gm)"></div></div>' +
-          '<span style="font-size:11px;color:var(--dim);cursor:pointer" onclick="editCell(\'Progress %\',\'0–100\',\'' + t.prog + '\',function(v){S.tutorials[' + ri + '].prog=Math.min(100,Math.max(0,parseInt(v)||0));renderTuts();renderTraining();updateDashStats();})">' + t.prog + '%</span>' +
         '</div>' +
         videoAction +
       '</div></div>';
@@ -3186,12 +3333,13 @@ function renderNB() {
   if (!list) return;
   list.innerHTML = S.notebooks.map((e, ri) =>
     '<div class="nb-entry">' +
+    '<button class="btn btn-ghost btn-sm" style="position:absolute;top:12px;right:44px;font-size:11px" onclick="openEditModal(\'notebook\',' + ri + ')">Edit</button>' +
     '<button class="nb-del" onclick="if(confirm(\'Delete entry?\')){S.notebooks.splice(' + ri + ',1);renderNB();toast(\'Deleted.\');}">✕</button>' +
     '<div class="nb-header"><div class="av ' + e.av + '" style="width:28px;height:28px;font-size:10px;flex-shrink:0">' + esc(e.init) + '</div>' +
-    '<div class="nb-title-txt editable" onclick="editCell(\'Edit Title\',\'Experiment title\',\'' + esc(e.title) + '\',function(v){S.notebooks[' + ri + '].title=v;renderNB();})">' + esc(e.title) + '</div>' +
+    '<div class="nb-title-txt">' + esc(e.title) + '</div>' +
     '<div class="nb-hash">' + e.hash + '</div></div>' +
     '<div class="nb-date">' + esc(e.author) + ' · ' + e.date + ' · <em style="color:var(--teal)">' + esc(e.topic) + '</em></div>' +
-    '<div class="nb-body-txt editable" onclick="editCell(\'Edit Notes\',\'Observations / results\',\'' + esc(e.body) + '\',function(v){S.notebooks[' + ri + '].body=v;renderNB();})">' + esc(e.body) + '</div>' +
+    '<div class="nb-body-txt">' + esc(e.body) + '</div>' +
     '<div class="nb-tags">' + e.tags.map(t => '<span class="nb-tag">' + esc(t) + '</span>').join('') + '</div>' +
     '</div>'
   ).join('');
@@ -3224,12 +3372,13 @@ function renderAnnouncements() {
   if (list) list.innerHTML = S.announcements.map((a, ri) => {
     const c = A_COLORS[a.type] || A_COLORS.news;
     return '<div class="announce-card" style="border-left-color:' + c.border + '">' +
+      '<button class="btn btn-ghost btn-sm" style="position:absolute;top:10px;right:42px;font-size:11px" onclick="openEditModal(\'announcement\',' + ri + ')">Edit</button>' +
       '<button class="announce-del" onclick="if(confirm(\'Delete?\''+')){S.announcements.splice(' + ri + ',1);renderAnnouncements();toast(\'Deleted.\');}">✕</button>' +
       '<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">' +
-        '<div class="announce-title editable" style="flex:1" onclick="editCell(\'Edit Title\',\'Title\',\'' + esc(a.title) + '\',function(v){S.announcements[' + ri + '].title=v;renderAnnouncements();})">' + esc(a.title) + '</div>' +
+        '<div class="announce-title" style="flex:1">' + esc(a.title) + '</div>' +
         '<div class="chip" style="background:' + c.bg + ';color:' + c.color + '">' + (a.type.charAt(0).toUpperCase() + a.type.slice(1)) + '</div>' +
       '</div>' +
-      '<div class="announce-body editable" onclick="editCell(\'Edit Message\',\'Message\',\'' + esc(a.body) + '\',function(v){S.announcements[' + ri + '].body=v;renderAnnouncements();})">' + esc(a.body) + '</div>' +
+      '<div class="announce-body">' + esc(a.body) + '</div>' +
       '<div class="announce-meta">' + esc(a.meta) + '</div></div>';
   }).join('');
   const dash = el('dash-announces');
@@ -3278,10 +3427,11 @@ function renderProtocols() {
       '</div>';
     return '<div class="proto-card" data-ri="'+ri+'">' +
       '<button class="proto-del" data-action="del-proto" data-ri="'+ri+'">✕</button>' +
+      '<button class="btn btn-ghost btn-sm" style="position:absolute;top:10px;right:32px;font-size:11px" onclick="openEditModal(\'protocol\','+ri+')">Edit</button>' +
       '<div class="proto-icon">'+p.icon+'</div><div style="flex:1">' +
-      '<div class="proto-name editable" data-action="edit-proto-name" data-ri="'+ri+'" data-val="'+esc(p.name)+'">'+esc(p.name)+'</div>' +
-      '<div class="proto-meta editable" data-action="edit-proto-meta" data-ri="'+ri+'" data-val="'+esc(p.meta)+'">'+esc(p.meta)+'</div>' +
-      '<div class="proto-desc editable" data-action="edit-proto-desc" data-ri="'+ri+'" data-val="'+esc(p.desc)+'">'+esc(p.desc)+'</div>' +
+      '<div class="proto-name">'+esc(p.name)+'</div>' +
+      '<div class="proto-meta">'+esc(p.meta)+'</div>' +
+      '<div class="proto-desc">'+esc(p.desc)+'</div>' +
       '<div class="proto-tags" style="margin-top:6px">'+tags+'</div>' +
       (fileBtn ? '<div style="margin-top:6px">'+fileBtn+'</div>' : '') +
       attachControls +
@@ -3375,7 +3525,7 @@ function renderTraining() {
     return (
     '<div class="prog-row"' + (ri === S.training.length - 1 ? ' style="margin-bottom:0"' : '') + '>' +
     '<div class="prog-lbl-row">' +
-      '<span class="prog-lbl editable" onclick="editCell(\'Edit Topic\',\'Topic name\',\'' + esc(t.label) + '\',function(v){S.training[' + ri + '].label=v;renderTraining();})">' + esc(t.label) + '</span>' +
+      '<span class="prog-lbl">' + esc(t.label) + '</span>' +
       '<span class="prog-pct" style="color:' + t.color + '" title="Calculated from tutorials, onboarding, and member training data">' + pct + '%</span>' +
     '</div>' +
     '<div class="prog-track"><div class="prog-fill" style="width:' + pct + '%;background:' + t.color + '"></div></div>' +
@@ -3391,12 +3541,13 @@ function renderResearch() {
   const rg = el('research-grid');
   if (!rg) return;
   rg.innerHTML = S.research.map((r, ri) =>
-    '<div class="research-card" style="position:relative" onmouseenter="this.querySelector(\'.r-del\').style.opacity=\'1\'" onmouseleave="this.querySelector(\'.r-del\').style.opacity=\'0\'">' +
+    '<div class="research-card" style="position:relative" onmouseenter="this.querySelectorAll(\'.r-del,.r-edit\').forEach(b=>b.style.opacity=\'1\')" onmouseleave="this.querySelectorAll(\'.r-del,.r-edit\').forEach(b=>b.style.opacity=\'0\')">' +
     '<button class="r-del" style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;color:var(--dim);font-size:12px;opacity:0;transition:opacity 0.12s" onclick="if(confirm(\'Delete topic?\''+')){S.research.splice(' + ri + ',1);renderResearch();toast(\'Removed.\');}">✕</button>' +
-    '<div class="research-icon editable" onclick="editCell(\'Icon\',\'Emoji\',\'' + esc(r.icon) + '\',function(v){S.research[' + ri + '].icon=v;renderResearch();})">' + r.icon + '</div>' +
-    '<div class="research-title editable" onclick="editCell(\'Title\',\'Research topic title\',\'' + esc(r.title) + '\',function(v){S.research[' + ri + '].title=v;renderResearch();})">' + esc(r.title) + '</div>' +
-    '<div style="font-size:10.5px;color:var(--dim);margin-bottom:7px" class="editable" onclick="editCell(\'Japanese Subtitle\',\'Japanese subtitle\',\'' + esc(r.jp) + '\',function(v){S.research[' + ri + '].jp=v;renderResearch();})">' + esc(r.jp) + '</div>' +
-    '<div class="research-body editable" onclick="editCell(\'Description\',\'Description\',\'' + esc(r.body) + '\',function(v){S.research[' + ri + '].body=v;renderResearch();})">' + esc(r.body) + '</div>' +
+    '<button class="r-edit btn btn-ghost btn-sm" style="position:absolute;top:10px;right:32px;font-size:11px;opacity:0;transition:opacity 0.12s" onclick="openEditModal(\'research\',' + ri + ')">Edit</button>' +
+    '<div class="research-icon">' + r.icon + '</div>' +
+    '<div class="research-title">' + esc(r.title) + '</div>' +
+    '<div style="font-size:10.5px;color:var(--dim);margin-bottom:7px">' + esc(r.jp) + '</div>' +
+    '<div class="research-body">' + esc(r.body) + '</div>' +
     '<div class="research-tags">' + r.tags.map(t => '<span class="tag ' + (R_TAG_COLS[t] || 'tag-int') + '">' + esc(t) + '</span>').join('') + '</div>' +
     '</div>'
   ).join('');
@@ -3493,7 +3644,7 @@ function renderAssignments() {
     }).join('');
     return '<div style="background:' + st.bg + ';border:1px solid ' + st.border + ';border-radius:8px;padding:11px;position:relative">' +
       '<button data-ri="' + ri + '" data-action="remove-group" style="position:absolute;top:6px;right:6px;background:none;border:none;cursor:pointer;color:var(--dim);font-size:11px;line-height:1" title="Remove group">✕</button>' +
-      '<div class="editable" data-ri="' + ri + '" data-action="edit-topic" style="font-size:10.5px;font-weight:600;color:' + st.color + ';margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">' + esc(a.topic) + '</div>' +
+      '<div style="font-size:10.5px;font-weight:600;color:' + st.color + ';margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">' + esc(a.topic) + '</div>' +
       memberHTML +
       '<button data-ri="' + ri + '" data-action="add-member" style="background:none;border:none;cursor:pointer;color:' + st.color + ';font-size:11px;margin-top:6px;padding:0;display:block">+ Add member</button>' +
     '</div>';
@@ -3640,7 +3791,7 @@ function renderOnboarding() {
     const done = me && t.completedBy && t.completedBy.includes(me);
     const names = (t.completedBy||[]).join(', ')||'—';
     return '<tr data-ri="'+ri+'">' +
-      '<td><span class="editable" data-action="edit-ot-task" data-ri="'+ri+'" data-val="'+esc(t.task)+'">'+esc(t.task)+'</span></td>'+
+      '<td><span data-action="edit-ot-task" data-ri="'+ri+'" data-val="'+esc(t.task)+'">'+esc(t.task)+'</span></td>'+
       '<td><span class="chip editable" data-action="edit-ot-cat" data-ri="'+ri+'" data-val="'+esc(t.category)+'" style="background:'+cb+';color:'+cc+';font-size:10px">'+t.category+'</span></td>'+
       '<td><span class="chip editable" data-action="toggle-ot-req" data-ri="'+ri+'" style="background:'+(t.required?'var(--rl)':'var(--sand2)')+';color:'+(t.required?'var(--red)':'var(--mid)')+';font-size:10px">'+(t.required?'Required':'Optional')+'</span></td>'+
       '<td style="font-size:12px;color:var(--mid);max-width:180px">'+esc(names)+'</td>'+
@@ -3738,15 +3889,15 @@ function renderPublications() {
 
   pl.innerHTML=S.publications.slice().reverse().map(function(p,revIdx){
     var ri=S.publications.length-1-revIdx, st=PUB_STATUS[p.status]||PUB_STATUS['submitted'];
-    var doiHtml='<span class="editable" data-action="edit-pub-doi" data-ri="'+ri+'" data-val="'+esc(p.doi||'')+'" style="font-size:11px;color:'+(p.doi?'var(--blue)':'var(--dim)')+'">'+(p.doi?'DOI: '+esc(p.doi):'No DOI yet')+'</span>';
+    var doiHtml='<span data-action="edit-pub-doi" data-ri="'+ri+'" data-val="'+esc(p.doi||'')+'" style="font-size:11px;color:'+(p.doi?'var(--blue)':'var(--dim)')+'">'+(p.doi?'DOI: '+esc(p.doi):'No DOI yet')+'</span>';
     var tags=(p.tags||[]).map(function(t){return'<span class="nb-tag">'+esc(t)+'</span>';}).join('');
     return '<div style="background:var(--warm);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px;position:relative" data-ri="'+ri+'">'+
       '<button data-action="del-pub" data-ri="'+ri+'" style="position:absolute;top:12px;right:12px;background:none;border:none;cursor:pointer;color:var(--dim);font-size:13px">✕</button>'+
       '<div style="display:flex;align-items:flex-start;gap:12px">'+
         '<div style="flex:1">'+
-          '<div style="font-size:14px;font-weight:600;margin-bottom:4px;padding-right:24px" class="editable" data-action="edit-pub-title" data-ri="'+ri+'" data-val="'+esc(p.title)+'">'+esc(p.title)+'</div>'+
-          '<div style="font-size:12.5px;color:var(--mid);margin-bottom:4px" class="editable" data-action="edit-pub-authors" data-ri="'+ri+'" data-val="'+esc(p.authors)+'">'+esc(p.authors)+'</div>'+
-          '<div style="font-size:12px;color:var(--dim);margin-bottom:8px"><em class="editable" data-action="edit-pub-journal" data-ri="'+ri+'" data-val="'+esc(p.journal)+'">'+esc(p.journal)+'</em> · <span class="editable" data-action="edit-pub-year" data-ri="'+ri+'" data-val="'+esc(p.year)+'">'+p.year+'</span></div>'+
+          '<div style="font-size:14px;font-weight:600;margin-bottom:4px;padding-right:24px" data-action="edit-pub-title" data-ri="'+ri+'" data-val="'+esc(p.title)+'">'+esc(p.title)+'</div>'+
+          '<div style="font-size:12.5px;color:var(--mid);margin-bottom:4px" data-action="edit-pub-authors" data-ri="'+ri+'" data-val="'+esc(p.authors)+'">'+esc(p.authors)+'</div>'+
+          '<div style="font-size:12px;color:var(--dim);margin-bottom:8px"><em data-action="edit-pub-journal" data-ri="'+ri+'" data-val="'+esc(p.journal)+'">'+esc(p.journal)+'</em> · <span data-action="edit-pub-year" data-ri="'+ri+'" data-val="'+esc(p.year)+'">'+p.year+'</span></div>'+
           doiHtml+'<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px">'+tags+'</div>'+
         '</div>'+
         '<span class="chip" style="background:'+st.bg+';color:'+st.color+';cursor:pointer;font-size:11px;flex-shrink:0" data-action="cycle-pub-status" data-ri="'+ri+'">'+st.label+' ▾</span>'+
@@ -3828,14 +3979,14 @@ function renderMeetings(){
     return '<div style="background:var(--warm);border:1px solid var(--border);border-left:3px solid '+(isPast?'var(--border2)':'var(--gm)')+';border-radius:0 12px 12px 0;padding:15px 18px;margin-bottom:10px;position:relative">'+
       '<button data-action="del-mt" data-ri="'+ri+'" style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;color:var(--dim);font-size:13px">✕</button>'+
       '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'+
-        '<div style="font-family:Lora,serif;font-size:13px;font-weight:600;color:var(--dim)" class="editable" data-action="edit-mt-date" data-ri="'+ri+'" data-val="'+esc(m.date)+'">'+d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</div>'+
-        '<div style="font-size:12px;color:var(--mid);font-weight:600" class="editable" data-action="edit-mt-time" data-ri="'+ri+'" data-val="'+esc((m.time||'')+'-'+(m.endTime||''))+'">'+esc(meetingTimeLabel(m))+'</div>'+
-        '<div style="font-size:13px;font-weight:600;flex:1;padding-right:20px" class="editable" data-action="edit-mt-title" data-ri="'+ri+'" data-val="'+esc(title)+'">'+esc(title)+'</div>'+
+        '<div style="font-family:Lora,serif;font-size:13px;font-weight:600;color:var(--dim)" data-action="edit-mt-date" data-ri="'+ri+'" data-val="'+esc(m.date)+'">'+d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})+'</div>'+
+        '<div style="font-size:12px;color:var(--mid);font-weight:600" data-action="edit-mt-time" data-ri="'+ri+'" data-val="'+esc((m.time||'')+'-'+(m.endTime||''))+'">'+esc(meetingTimeLabel(m))+'</div>'+
+        '<div style="font-size:13px;font-weight:600;flex:1;padding-right:20px" data-action="edit-mt-title" data-ri="'+ri+'" data-val="'+esc(title)+'">'+esc(title)+'</div>'+
         '<span class="chip" style="background:'+(isPast?'var(--sand2)':'var(--gl)')+';color:'+(isPast?'var(--mid)':'var(--green)')+';font-size:10px;flex-shrink:0">'+(isPast?'Completed':'Upcoming')+'</span>'+
       '</div>'+
-      (topic ? '<div style="font-size:12.5px;color:var(--text);font-weight:500;margin-bottom:6px" class="editable" data-action="edit-mt-topic" data-ri="'+ri+'" data-val="'+esc(topic)+'">'+esc(topic)+'</div>' : '')+
-      '<div style="font-size:12px;color:var(--teal);font-weight:500;margin-bottom:6px" class="editable" data-action="edit-mt-presenter" data-ri="'+ri+'" data-val="'+esc(presenters)+'">🎤 '+esc(presenters)+'</div>'+
-      '<div style="font-size:13px;color:var(--mid);line-height:1.6" class="editable" data-action="edit-mt-update" data-ri="'+ri+'" data-val="'+esc(m.updates)+'">'+esc(m.updates)+'</div>'+
+      (topic ? '<div style="font-size:12.5px;color:var(--text);font-weight:500;margin-bottom:6px" data-action="edit-mt-topic" data-ri="'+ri+'" data-val="'+esc(topic)+'">'+esc(topic)+'</div>' : '')+
+      '<div style="font-size:12px;color:var(--teal);font-weight:500;margin-bottom:6px" data-action="edit-mt-presenter" data-ri="'+ri+'" data-val="'+esc(presenters)+'">🎤 '+esc(presenters)+'</div>'+
+      '<div style="font-size:13px;color:var(--mid);line-height:1.6" data-action="edit-mt-update" data-ri="'+ri+'" data-val="'+esc(m.updates)+'">'+esc(m.updates)+'</div>'+
       (m.gcalEventId ? '<div style="font-size:11px;color:var(--green);margin-top:8px">Google Calendar synced</div>' : '<div style="font-size:11px;color:var(--dim);margin-top:8px">Saved locally <button class="btn btn-ghost btn-sm" style="font-size:10.5px;margin-left:6px" data-action="sync-mt" data-ri="'+ri+'">Sync to Google</button></div>')+
     '</div>';
   }).join('');
@@ -3867,13 +4018,15 @@ function renderSDS(filter){
     var ghsIcons=(s.ghs||[]).map(function(g){return GHS_EMOJI[g]||'⚠️';}).join(' ');
     var hBg=s.hazard&&s.hazard.toLowerCase().includes('corrosive')?'var(--rl)':s.hazard&&s.hazard.toLowerCase().includes('flammable')?'var(--al)':'var(--sand)';
     return '<tr>'+
-      '<td><div style="font-weight:500" class="editable" data-action="edit-sds-name" data-ri="'+ri+'" data-val="'+esc(s.name)+'">'+esc(s.name)+'</div></td>'+
-      '<td style="font-family:monospace;font-size:11.5px;color:var(--dim)" class="editable" data-action="edit-sds-cas" data-ri="'+ri+'" data-val="'+esc(s.casNo||'')+'">'+esc(s.casNo||'—')+'</td>'+
-      '<td><span class="editable" data-action="edit-sds-hazard" data-ri="'+ri+'" data-val="'+esc(s.hazard||'')+'" style="font-size:11.5px;padding:2px 8px;border-radius:20px;background:'+hBg+';color:var(--text)">'+esc(s.hazard||'—')+'</span></td>'+
-      '<td style="font-size:12.5px;color:var(--mid)" class="editable" data-action="edit-sds-loc" data-ri="'+ri+'" data-val="'+esc(s.loc||'')+'">'+esc(s.loc||'—')+'</td>'+
+      '<td><div style="font-weight:500" >'+esc(s.name)+'</div></td>'+
+      '<td style="font-family:monospace;font-size:11.5px;color:var(--dim)">'+esc(s.casNo||'—')+'</td>'+
+      '<td><span style="font-size:11.5px;padding:2px 8px;border-radius:20px;background:'+hBg+';color:var(--text)">'+esc(s.hazard||'—')+'</span></td>'+
+      '<td style="font-size:12.5px;color:var(--mid)">'+esc(s.loc||'—')+'</td>'+
       '<td style="font-size:16px;letter-spacing:2px">'+ghsIcons+'</td>'+
       '<td>'+(s.sdsUrl?'<a href="'+esc(s.sdsUrl)+'" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;font-size:11.5px">View SDS ↗</a> ':'<span style="color:var(--dim);font-size:12px">No link </span>')+'<button class="btn btn-ghost btn-sm" style="font-size:11px" data-action="edit-sds-url" data-ri="'+ri+'" data-val="'+esc(s.sdsUrl||'')+'">Edit</button></td>'+
-      '<td><button class="btn btn-danger btn-sm" data-action="del-sds" data-ri="'+ri+'">✕</button></td>'+
+      '<td><div class="row-actions">' +
+      '<button class="btn btn-ghost btn-sm" onclick="openEditModal(\'sds\',' + ri + ')">Edit</button>' +
+      '<button class="btn btn-danger btn-sm" data-action="del-sds" data-ri="'+ri+'">✕</button></td>'+
     '</tr>';
   }).join('');
   tbody.onclick=function(e){
