@@ -1060,7 +1060,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
         <div style="display:flex;gap:8px;align-items:center">
           <span style="font-size:12px;color:var(--mid)">Shared via Google Calendar</span>
           <button class="btn btn-ghost btn-sm" onclick="openModal('modal-gcal-auth')">Google Login</button>
-          <button class="btn btn-ghost btn-sm" onclick="loadGCalEvents()">Sync Now</button>
+          <button class="btn btn-ghost btn-sm" onclick="gcalAccessToken ? loadGCalEvents() : signInGoogleCalendar()">Sync Now</button>
           <button class="btn btn-primary btn-sm" onclick="openModal('modal-event')">+ Add Event</button>
         </div>
       </div>
@@ -2438,11 +2438,10 @@ var GCAL_CALENDAR_ID = 'nishiharalab2026@gmail.com';
 var gcalLoginTimer = null;
 
 function getGCalConfig() {
-  return {
-    clientId: localStorage.getItem('labos_gcal_client_id') || GCAL_DEFAULT_CLIENT_ID,
-    apiKey: localStorage.getItem('labos_gcal_api_key_live') || GCAL_DEFAULT_API_KEY,
-    calendarId: localStorage.getItem('labos_gcal_calendar_id') || GCAL_CALENDAR_ID
-  };
+  var clientId = (localStorage.getItem('labos_gcal_client_id') || '').trim() || GCAL_DEFAULT_CLIENT_ID;
+  var apiKey = (localStorage.getItem('labos_gcal_api_key_live') || '').trim() || GCAL_DEFAULT_API_KEY;
+  var calendarId = (localStorage.getItem('labos_gcal_calendar_id') || '').trim() || GCAL_CALENDAR_ID;
+  return { clientId, apiKey, calendarId };
 }
 function seedGCalConfigDefaults() {
   if (!localStorage.getItem('labos_gcal_client_id')) localStorage.setItem('labos_gcal_client_id', GCAL_DEFAULT_CLIENT_ID);
@@ -2581,6 +2580,27 @@ async function initGoogleCalendarClient() {
           S.meetings.forEach(function(m) {
             if (!m.gcalEventId && m.date) syncMeetingToGoogleCalendar(m);
           });
+          // Sync any unsynced equipment bookings
+          S.bookings.forEach(function(b) {
+            if (!b.gcalEventId && b.date) {
+              var equip = S.equipment.find(function(e) { return e.name === b.equip; });
+              if (equip) syncBookingToGoogleCalendar(b, equip);
+            }
+          });
+          // Sync any unsynced calendar events
+          S.events.forEach(function(ev) {
+            if (!ev.gcalEventId && ev.date) {
+              insertGoogleCalendarEvent({
+                summary: ev.label,
+                description: ev.desc || '',
+                start: ev.time ? {dateTime: ev.date+'T'+ev.time+':00', timeZone:'Asia/Tokyo'} : {date: ev.date},
+                end: ev.time ? {dateTime: ev.date+'T'+addHoursToTime(ev.time,1)+':00', timeZone:'Asia/Tokyo'} : {date: ev.date}
+              }).then(function(created) {
+                if (created && created.id) { ev.gcalEventId = created.id; save(); }
+              }).catch(function(){});
+            }
+          });
+          toast('Google Calendar connected ✓', 2500);
         } else {
           setGCalStatus('error', 'Google login was cancelled');
         }
@@ -2615,9 +2635,23 @@ async function silentSignIn() {
 
 // Auto sign-in on page load if user has previously logged in
 async function tryAutoSignIn() {
-  // Do nothing on page load — Google sign-in is manual only
-  // Just update the GCal pill to show it's ready
-  setGCalStatus('error', 'Google Calendar · click to sync');
+  var cfg = getGCalConfig();
+  if (!cfg.clientId || !cfg.apiKey) return;
+  if (window.location.protocol === 'file:') return;
+  try {
+    setGCalStatus('loading', 'Connecting to Google…');
+    await initGoogleCalendarClient();
+    // Try silent login — works if browser has an active Google session
+    gcalTokenClient.requestAccessToken({ prompt: '' });
+    // If no token after 6 seconds, show the pill as clickable instead
+    setTimeout(function() {
+      if (!gcalAccessToken) {
+        setGCalStatus('error', 'Google Calendar · click to sync');
+      }
+    }, 6000);
+  } catch(e) {
+    setGCalStatus('error', 'Google Calendar · click to sync');
+  }
 }
 
 function showReconnectBar() {
@@ -2631,15 +2665,15 @@ function showReconnectBar() {
 }
 
 async function signInGoogleCalendar() {
-  saveGCalConfig();
+  toast('Connecting to Google…', 3000);
   try {
-    setGCalStatus('loading', 'Waiting for Google login…');
+    setGCalStatus('loading', 'Connecting to Google…');
     await initGoogleCalendarClient();
     gcalTokenClient.requestAccessToken({ prompt: '' });
     if (gcalLoginTimer) clearTimeout(gcalLoginTimer);
     gcalLoginTimer = setTimeout(function() {
       if (!gcalAccessToken) {
-        setGCalStatus('error', 'Login timed out · try again');
+        setGCalStatus('error', 'Google Calendar · click to sync');
         toast('Google login timed out. Try clicking Sync again.', 4000);
       }
     }, 30000);
@@ -5203,8 +5237,8 @@ if (_ecs) _ecs.addEventListener('click', saveEditCell);
   if (orig) window[fnName] = function(...args) { orig(...args); save(); };
 });
 
-// Show reconnect bar after page renders (non-blocking)
-setTimeout(tryAutoSignIn, 1500);
+// Try silent auto sign-in after page fully renders
+setTimeout(tryAutoSignIn, 2000);
 // Apply permissions based on current user
 applyPermissions();
 
