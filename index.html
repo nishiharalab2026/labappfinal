@@ -2254,6 +2254,8 @@ async function initGoogleCalendarClient() {
           gcalAccessToken = resp.access_token;
           gapi.client.setToken({ access_token: gcalAccessToken });
           closeModal('modal-gcal-auth');
+          // Schedule silent token refresh before it expires (tokens last ~1 hour)
+          scheduleTokenRefresh();
           // Load shared lab data from Drive, then re-render everything
           loadFromDrive().then(function(hadDriveData) {
             if (hadDriveData) {
@@ -2273,12 +2275,53 @@ async function initGoogleCalendarClient() {
     });
   }
 }
+var _tokenRefreshTimer = null;
+function scheduleTokenRefresh() {
+  if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer);
+  // Refresh silently after 50 minutes (tokens last 60 min)
+  _tokenRefreshTimer = setTimeout(function() {
+    silentSignIn();
+  }, 50 * 60 * 1000);
+}
+
+async function silentSignIn() {
+  try {
+    await initGoogleCalendarClient();
+    // Request token silently — no popup, no consent screen
+    gcalTokenClient.requestAccessToken({ prompt: '' });
+  } catch(e) {
+    console.warn('Silent token refresh failed:', e);
+    setGCalStatus('error', 'Session expired · click to sign in again');
+  }
+}
+
+// Auto sign-in on page load if user has previously logged in
+async function tryAutoSignIn() {
+  var cfg = getGCalConfig();
+  if (!cfg.clientId || !cfg.apiKey) return;
+  if (window.location.protocol === 'file:') return;
+  try {
+    setGCalStatus('loading', 'Signing in…');
+    await initGoogleCalendarClient();
+    // Use prompt:'' for silent login — works if user already granted consent before
+    gcalTokenClient.requestAccessToken({ prompt: '' });
+    // Set a short timeout — if no token after 5s, it needs manual login
+    setTimeout(function() {
+      if (!gcalAccessToken) {
+        setGCalStatus('error', 'Google Calendar ready · login to sync');
+      }
+    }, 5000);
+  } catch(e) {
+    setGCalStatus('error', 'Google Calendar ready · login to sync');
+  }
+}
+
 async function signInGoogleCalendar() {
   saveGCalConfig();
   try {
     setGCalStatus('loading', 'Waiting for Google login…');
     await initGoogleCalendarClient();
-    gcalTokenClient.requestAccessToken({ prompt: gcalAccessToken ? '' : 'consent' });
+    gcalTokenClient.requestAccessToken({ prompt: '' });
     if (gcalLoginTimer) clearTimeout(gcalLoginTimer);
     gcalLoginTimer = setTimeout(function() {
       if (!gcalAccessToken) {
@@ -4648,9 +4691,8 @@ if (_ecs) _ecs.addEventListener('click', saveEditCell);
   if (orig) window[fnName] = function(...args) { orig(...args); save(); };
 });
 
-// Google Calendar API tokens are not stored after refresh, so do not auto-sync.
-// Users can click "Login & Sync" or "Sync Now" when they are ready.
-setGCalStatus(gcalAccessToken ? 'connected' : 'error', gcalAccessToken ? 'Google Calendar connected' : 'Google Calendar ready · login to sync');
+// Attempt silent auto sign-in on every page load
+tryAutoSignIn();
 
 
 }); // end DOMContentLoaded
