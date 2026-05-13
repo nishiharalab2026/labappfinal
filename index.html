@@ -937,6 +937,10 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
     <div class="nav-lbl" data-num="V.">People</div>
     <div class="nav-item" onclick="go('members',this)"><span class="nav-icon">👥</span> Members</div>
   </div>
+  <div class="nav-sec">
+    <div class="nav-lbl" data-num="VI.">Admin</div>
+    <div class="nav-item" data-perm="members" onclick="go('settings',this)"><span class="nav-icon">⚙️</span> Permissions</div>
+  </div>
   <div class="sidebar-footer">
     <div class="user-card" style="margin-bottom:10px">
       <div class="av av-purple" id="current-user-av">MN</div>
@@ -997,7 +1001,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
         <div class="gcal-dot"></div>
         <span id="gcal-txt">Connecting Google Calendar…</span>
       </div>
-      <button class="btn btn-ghost" onclick="openModal('modal-event')">+ Add Event</button>
+      <button class="btn btn-ghost" data-perm="calendar" onclick="openModal('modal-event')">+ Add Event</button>
       <button class="btn btn-primary" id="topbtn" onclick="topAction()">+ New Entry</button>
     </div>
   </div>
@@ -1084,7 +1088,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
           <div style="font-family:'Lora',serif;font-size:15px;font-weight:600;margin-bottom:5px" >Polymer Materials for Hydrogen Energy Devices</div>
           <div style="font-size:12.5px;color:var(--mid);line-height:1.7" >高分子電解質燃料電池・水電解装置に向けた高分子材料開発 — Developing polymer electrolyte materials for next-generation fuel cells and water electrolyzers at Kyushu University, Fukuoka, Japan.</div>
         </div>
-        <button class="btn btn-primary" style="margin-left:16px;flex-shrink:0" onclick="openModal('modal-research')">+ Add Topic</button>
+        <button class="btn btn-primary" data-perm="research" style="margin-left:16px;flex-shrink:0" onclick="openModal('modal-research')">+ Add Topic</button>
       </div>
       <div class="research-grid" id="research-grid"></div>
       <div class="card">
@@ -1097,7 +1101,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
 
     <!-- NOTEBOOK -->
     <div id="page-notebook" class="page">
-      <div class="sec-header"><div class="sec-title">Digital Lab Notebook</div><button class="btn btn-primary" onclick="openModal('modal-entry')">+ New Entry</button></div>
+      <div class="sec-header"><div class="sec-title">Digital Lab Notebook</div><button class="btn btn-primary" data-perm="notebook" onclick="openModal('modal-entry')">+ New Entry</button></div>
       <div id="nb-list"></div>
     </div>
 
@@ -1107,7 +1111,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
         <div class="sec-title">Material Inventory</div>
         <div style="display:flex;gap:8px">
           <div class="search-wrap"><span class="search-icon">⌕</span><input class="search-input" placeholder="Search…" oninput="filterInventory(this.value)"></div>
-          <button class="btn btn-primary" onclick="openModal('modal-reagent')">+ Add Item</button>
+          <button class="btn btn-primary" data-perm="inventory" onclick="openModal('modal-reagent')">+ Add Item</button>
         </div>
       </div>
       <div class="full-card"><table class="data-table" style="width:100%">
@@ -1129,7 +1133,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
           <button class="btn btn-ghost btn-sm" id="equip-view-cards" onclick="switchEquipView('cards')">⊞ Cards</button>
           <button class="btn btn-primary btn-sm" id="equip-view-week" onclick="switchEquipView('week')">📅 Week View</button>
           <button class="btn btn-ghost btn-sm" id="equip-view-month" onclick="switchEquipView('month')">Month View</button>
-          <button class="btn btn-primary" onclick="openModal('modal-equip')">+ Add Equipment</button>
+          <button class="btn btn-primary" data-perm="equipment" onclick="openModal('modal-equip')">+ Add Equipment</button>
         </div>
       </div>
       <!-- CARD VIEW -->
@@ -1182,7 +1186,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
         <div class="tab" onclick="filterTuts('safety',this)">Safety</div>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-        <button class="btn btn-primary" onclick="openModal('modal-tutorial')">+ Add Tutorial</button>
+        <button class="btn btn-primary" data-perm="tutorials" onclick="openModal('modal-tutorial')">+ Add Tutorial</button>
       </div>
       <div class="tut-grid" id="tut-grid"></div>
     </div>
@@ -1193,7 +1197,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
         <div class="sec-title">Lab Members</div>
         <div style="display:flex;gap:8px;align-items:center">
           <div class="search-wrap"><span class="search-icon">⌕</span><input class="search-input" placeholder="Search…" oninput="filterMembers(this.value)"></div>
-          <button class="btn btn-primary" onclick="openModal('modal-member')">+ Add Member</button>
+          <button class="btn btn-primary" data-perm="members" onclick="openModal('modal-member')">+ Add Member</button>
         </div>
       </div>
       <div class="full-card"><table class="data-table">
@@ -1204,7 +1208,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
 
     <!-- PROTOCOLS -->
     <div id="page-protocols" class="page">
-      <div class="sec-header"><div class="sec-title">Standard Operating Procedures</div><button class="btn btn-primary" onclick="openModal('modal-protocol')">+ Add Protocol</button></div>
+      <div class="sec-header"><div class="sec-title">Standard Operating Procedures</div><button class="btn btn-primary" data-perm="protocols" onclick="openModal('modal-protocol')">+ Add Protocol</button></div>
       <div class="proto-grid" id="proto-grid"></div>
     </div>
 
@@ -1212,7 +1216,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
     <div id="page-onboarding" class="page">
       <div class="sec-header">
         <div class="sec-title">Onboarding Checklists</div>
-        <button class="btn btn-primary" onclick="openModal('modal-onboard-task')">+ Add Task</button>
+        <button class="btn btn-primary" data-perm="onboarding" onclick="openModal('modal-onboard-task')">+ Add Task</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
         <div class="card">
@@ -1239,7 +1243,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
     <div id="page-publications" class="page">
       <div class="sec-header">
         <div class="sec-title">Publications</div>
-        <button class="btn btn-primary" onclick="openModal('modal-publication')">+ Add Paper</button>
+        <button class="btn btn-primary" data-perm="publications" onclick="openModal('modal-publication')">+ Add Paper</button>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px" id="pub-stats"></div>
       <div id="pub-list"></div>
@@ -1249,7 +1253,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
     <div id="page-meetings" class="page">
       <div class="sec-header">
         <div class="sec-title">Lab Meeting Planner</div>
-        <button class="btn btn-primary" onclick="openModal('modal-meeting')">+ Add Update</button>
+        <button class="btn btn-primary" data-perm="meetings" onclick="openModal('modal-meeting')">+ Add Update</button>
       </div>
       <div style="background:var(--bl);border:1px solid #b8cfea;border-radius:10px;padding:14px 16px;margin-bottom:18px">
         <div style="font-size:13px;font-weight:600;color:var(--blue);margin-bottom:4px">📅 Next Lab Meeting</div>
@@ -1264,7 +1268,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
         <div class="sec-title">Safety Data Sheet Library</div>
         <div style="display:flex;gap:8px">
           <div class="search-wrap"><span class="search-icon">⌕</span><input class="search-input" placeholder="Search chemicals…" oninput="filterSDS(this.value)"></div>
-          <button class="btn btn-primary" onclick="openModal('modal-sds')">+ Add SDS</button>
+          <button class="btn btn-primary" data-perm="sds" onclick="openModal('modal-sds')">+ Add SDS</button>
         </div>
       </div>
       <div style="background:var(--rl);border:1px solid #f0b8b8;border-radius:10px;padding:12px 16px;margin-bottom:18px;font-size:12.5px;color:var(--red)">
@@ -1296,6 +1300,18 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
         </table>
       </div>
       <div id="log-empty" style="color:var(--dim);font-size:13px;padding:24px;text-align:center;display:none">No log entries yet.</div>
+    </div>
+
+    <!-- SETTINGS / PERMISSIONS PAGE -->
+    <div id="page-settings" class="page">
+      <div class="sec-header">
+        <div class="sec-title">Permissions</div>
+        <button class="btn btn-primary" onclick="savePermissions()">Save Changes</button>
+      </div>
+      <div style="background:var(--bl);border:1px solid var(--border);border-radius:4px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:var(--blue)">
+        ⚙️ The <strong>PI (Prof. Nishihara)</strong> always has full access to everything. For each section below, select which lab members can also add, edit, and delete entries.
+      </div>
+      <div id="permissions-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px"></div>
     </div>
 
   </div>
@@ -1861,9 +1877,44 @@ const S = {
     {icon:'🔋',title:'Hydrogen Storage by Carbon',jp:'水素貯蔵材料',body:'Developing porous carbon foam materials for hydrogen storage. Collaboration with Dr. Lyth, University of Strathclyde, UK.',tags:['Carbon Materials','H₂ Storage']},
     {icon:'💻',title:'Physical Model Simulation',jp:'物理モデル計算',body:'Physical models for PEFC and electrolyzer phenomena. Collaboration with Dr. Ismail (Univ. Hull, UK) and Japanese industry.',tags:['Simulation','COMSOL']},
   ],
+  // ── PERMISSIONS ─────────────────────────────────────────────
+  // Each section lists members who can edit. PI always has access.
+  permissions: {
+    publications:  ['Prof. Nishihara'],
+    meetings:      ['Prof. Nishihara'],
+    announcements: ['Prof. Nishihara'],
+    research:      ['Prof. Nishihara'],
+    members:       ['Prof. Nishihara'],
+    inventory:     ['Prof. Nishihara'],
+    protocols:     ['Prof. Nishihara'],
+    sds:           ['Prof. Nishihara'],
+    tutorials:     ['Prof. Nishihara'],
+    onboarding:    ['Prof. Nishihara'],
+    notebook:      ['Prof. Nishihara'],
+    equipment:     ['Prof. Nishihara'],
+    calendar:      ['Prof. Nishihara'],
+  }
 };
 
 // ── HELPERS ──────────────────────────────────────────────────
+
+// Returns true if the current user can edit the given section
+function canEdit(section) {
+  var user = S.currentUser;
+  if (!user) return false;
+  // PI always has full access
+  if (user.role === 'PI') return true;
+  var allowed = (S.permissions || {})[section] || [];
+  return allowed.indexOf(user.name) !== -1;
+}
+
+// Hide/show all elements with data-perm attribute based on current user
+function applyPermissions() {
+  document.querySelectorAll('[data-perm]').forEach(function(el) {
+    var section = el.getAttribute('data-perm');
+    el.style.display = canEdit(section) ? '' : 'none';
+  });
+}
 let _editCallback = null;
 let calYear = 2026, calMonth = 3;
 let _tutFilter = 'all';
@@ -2174,6 +2225,11 @@ function chooseUser(name, keepOpen) {
   try { localStorage.setItem('labos_current_user', S.currentUser.name); } catch(e) {}
   renderCurrentUser();
   renderOnboarding();
+  applyPermissions();
+  // Re-render sections so edit buttons show/hide correctly
+  renderMembers(); renderInventory(); renderEquip(); renderTuts(); renderNB();
+  renderAnnouncements(); renderProtocols(); renderResearch(); renderPublications();
+  renderMeetings(); renderSDS(); renderOnboarding();
   if (!keepOpen) closeModal('modal-login');
   toast('Using LabOS as ' + S.currentUser.name);
 }
@@ -2237,6 +2293,7 @@ function go(id, navEl) {
   if (id === 'publications') renderPublications();
   if (id === 'meetings') renderMeetings();
   if (id === 'sds') renderSDS();
+  if (id === 'settings') renderPermissions();
   if (navEl && window.innerWidth <= 1024) closeSidebar();
 }
 function topAction() {
@@ -2784,8 +2841,8 @@ function renderMembers(filter) {
       '<td><div class="mini-bar-wrap"><div class="mini-track"><div class="mini-fill" style="width:' + m.prog + '%;background:' + pc + '"></div></div><span class="mini-pct">' + m.prog + '%</span></div></td>' +
       '<td><span class="chip" style="background:' + statusBg + ';color:' + statusCol + ';cursor:pointer" title="Click to toggle" onclick="S.members[' + ri + '].status=S.members[' + ri + '].status===\'Active\'?\'Training\':\'Active\';renderMembers();toast(\'Status updated ✓\');">' + esc(m.status) + '</span></td>' +
       '<td><div class="row-actions">' +
-      '<button class="btn btn-ghost btn-sm" onclick="openEditModal(\'member\',' + ri + ')">Edit</button>' +
-      '<button class="btn btn-danger btn-sm" onclick="if(confirm(\'Remove ' + esc(m.first) + '?\')){S.members.splice(' + ri + ',1);renderMembers();toast(\'Removed.\');}">Remove</button>' +
+      (canEdit(\'members\') ? '<button class="btn btn-ghost btn-sm" onclick="openEditModal(\'member\',' + ri + ')">Edit</button>' : '') +
+      (canEdit(\'members\') ? '<button class="btn btn-danger btn-sm" onclick="if(confirm(\'Remove ' + esc(m.first) + '?\')){S.members.splice(' + ri + ',1);renderMembers();toast(\'Removed.\');}">Remove</button>' : '') +
       '</div></td>' +
       '</tr>';
   }).join('');
@@ -2834,7 +2891,7 @@ function renderInventory(filter) {
            '<div style="font-size:10.5px;color:var(--dim);margin-top:2px">' + esc(unit || 'unit') + '</div></td>' +
       '<td><div class="stock-wrap"><div class="stock-track"><div class="stock-fill ' + s.cls + '" style="width:' + s.w + '%"></div></div><span style="font-size:11px;font-weight:600;color:' + s.color + '">' + s.label + '</span></div></td>' +
       '<td style="font-size:11.5px;color:var(--mid)">' + esc(r.exp) + '</td>' +
-      '<td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-sm" onclick="openEditModal(\'inventory\',' + ri + ')">Edit</button>' + actionBtn + '<button class="btn btn-danger btn-sm" onclick="if(confirm(\'Delete ' + esc(r.name) + '?\')){S.inventory.splice(' + ri + ',1);renderInventory();toast(\'Removed.\');}">✕</button></div></td>' +
+      '<td><div style="display:flex;gap:4px">' + (canEdit(\'inventory\') ? '<button class="btn btn-ghost btn-sm" onclick="openEditModal(\'inventory\',' + ri + ')">Edit</button>' : '') + actionBtn + '<button class="btn btn-danger btn-sm" onclick="if(confirm(\'Delete ' + esc(r.name) + '?\')){S.inventory.splice(' + ri + ',1);renderInventory();toast(\'Removed.\');}">✕</button></div></td>' +
       '</tr>';
   }).join('');
 }
@@ -3265,8 +3322,8 @@ function renderTuts(filter) {
         ? '<button onclick="openFileInTab(S.tutorials['+ri+'].fileData,S.tutorials['+ri+'].fileName)" class="btn btn-primary btn-sm" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:12px">📂 Open ' + esc(t.fileName) + '</button>'
         : '<button class="btn btn-primary btn-sm" style="margin-top:8px;font-size:12px;width:100%" data-action="add-tut-url" data-ri="' + ri + '">+ Add Video URL or Upload File</button>'));
     return '<div class="tut-card">' +
-      '<button class="tut-del" data-action="delete-tut" data-ri="' + ri + '" title="Delete tutorial">✕</button>' +
-      '<button class="tut-edit" data-action="add-tut-url" data-ri="' + ri + '" title="Edit tutorial">Edit</button>' +
+      (canEdit(\'tutorials\') ? '<button class="tut-del" data-action="delete-tut" data-ri="' + ri + '" title="Delete tutorial">✕</button>' : '') +
+      (canEdit(\'tutorials\') ? '<button class="tut-edit" data-action="add-tut-url" data-ri="' + ri + '" title="Edit tutorial">Edit</button>' : '') +
       '<div class="tut-thumb" style="background:' + t.bg + '">' +
         '<span style="font-size:34px">' + t.icon + '</span>' +
         playBtn +
@@ -3333,8 +3390,8 @@ function renderNB() {
   if (!list) return;
   list.innerHTML = S.notebooks.map((e, ri) =>
     '<div class="nb-entry">' +
-    '<button class="btn btn-ghost btn-sm" style="position:absolute;top:12px;right:44px;font-size:11px" onclick="openEditModal(\'notebook\',' + ri + ')">Edit</button>' +
-    '<button class="nb-del" onclick="if(confirm(\'Delete entry?\')){S.notebooks.splice(' + ri + ',1);renderNB();toast(\'Deleted.\');}">✕</button>' +
+    (canEdit(\'notebook\') ? '<button class="btn btn-ghost btn-sm" style="position:absolute;top:12px;right:44px;font-size:11px" onclick="openEditModal(\'notebook\',' + ri + ')">Edit</button>' : '') +
+    (canEdit(\'notebook\') ? '<button class="nb-del" onclick="if(confirm(\'Delete entry?\')){S.notebooks.splice(' + ri + ',1);renderNB();toast(\'Deleted.\');}">✕</button>' +
     '<div class="nb-header"><div class="av ' + e.av + '" style="width:28px;height:28px;font-size:10px;flex-shrink:0">' + esc(e.init) + '</div>' +
     '<div class="nb-title-txt">' + esc(e.title) + '</div>' +
     '<div class="nb-hash">' + e.hash + '</div></div>' +
@@ -3372,8 +3429,8 @@ function renderAnnouncements() {
   if (list) list.innerHTML = S.announcements.map((a, ri) => {
     const c = A_COLORS[a.type] || A_COLORS.news;
     return '<div class="announce-card" style="border-left-color:' + c.border + '">' +
-      '<button class="btn btn-ghost btn-sm" style="position:absolute;top:10px;right:42px;font-size:11px" onclick="openEditModal(\'announcement\',' + ri + ')">Edit</button>' +
-      '<button class="announce-del" onclick="if(confirm(\'Delete?\''+')){S.announcements.splice(' + ri + ',1);renderAnnouncements();toast(\'Deleted.\');}">✕</button>' +
+      (canEdit(\'announcements\') ? '<button class="btn btn-ghost btn-sm" style="position:absolute;top:10px;right:42px;font-size:11px" onclick="openEditModal(\'announcement\',' + ri + ')">Edit</button>' : '') +
+      (canEdit(\'announcements\') ? '<button class="announce-del" onclick="if(confirm(\'Delete?\''+')){S.announcements.splice(' + ri + ',1);renderAnnouncements();toast(\'Deleted.\');}">✕</button>' +
       '<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px">' +
         '<div class="announce-title" style="flex:1">' + esc(a.title) + '</div>' +
         '<div class="chip" style="background:' + c.bg + ';color:' + c.color + '">' + (a.type.charAt(0).toUpperCase() + a.type.slice(1)) + '</div>' +
@@ -3426,8 +3483,8 @@ function renderProtocols() {
         (p.fileName || p.fileUrl ? '<button class="btn btn-danger btn-sm" style="font-size:11px" data-action="clear-proto-file" data-ri="' + ri + '">Clear Attachments</button>' : '') +
       '</div>';
     return '<div class="proto-card" data-ri="'+ri+'">' +
-      '<button class="proto-del" data-action="del-proto" data-ri="'+ri+'">✕</button>' +
-      '<button class="btn btn-ghost btn-sm" style="position:absolute;top:10px;right:32px;font-size:11px" onclick="openEditModal(\'protocol\','+ri+')">Edit</button>' +
+      (canEdit(\'protocols\') ? '<button class="proto-del" data-action="del-proto" data-ri="'+ri+'">✕</button>' : '') +
+      (canEdit(\'protocols\') ? '<button class="btn btn-ghost btn-sm" style="position:absolute;top:10px;right:32px;font-size:11px" onclick="openEditModal(\'protocol\','+ri+')">Edit</button>' : '') +
       '<div class="proto-icon">'+p.icon+'</div><div style="flex:1">' +
       '<div class="proto-name">'+esc(p.name)+'</div>' +
       '<div class="proto-meta">'+esc(p.meta)+'</div>' +
@@ -3563,7 +3620,71 @@ function addResearchTopic() {
 }
 
 
-// ── EXPORT / IMPORT ───────────────────────────────────────────
+// ── PERMISSIONS UI ───────────────────────────────────────────
+const PERM_SECTIONS = [
+  { key:'publications',  label:'Publications',    icon:'📰' },
+  { key:'meetings',      label:'Lab Meetings',    icon:'🗣️' },
+  { key:'announcements', label:'Announcements',   icon:'📢' },
+  { key:'research',      label:'Research Topics', icon:'⚗️' },
+  { key:'members',       label:'Members',         icon:'👥' },
+  { key:'inventory',     label:'Inventory',       icon:'🧴' },
+  { key:'protocols',     label:'Protocols',       icon:'📄' },
+  { key:'sds',           label:'SDS Library',     icon:'⚠️' },
+  { key:'tutorials',     label:'Tutorials',       icon:'▶️' },
+  { key:'onboarding',    label:'Onboarding',      icon:'🎯' },
+  { key:'notebook',      label:'Lab Notebook',    icon:'📓' },
+  { key:'equipment',     label:'Equipment',       icon:'🔬' },
+  { key:'calendar',      label:'Calendar Events', icon:'📅' },
+];
+
+function renderPermissions() {
+  var grid = el('permissions-grid');
+  if (!grid) return;
+  var perms = S.permissions || {};
+  var members = S.members.filter(function(m) { return m.role !== 'PI'; });
+  grid.innerHTML = PERM_SECTIONS.map(function(sec) {
+    var allowed = perms[sec.key] || ['Prof. Nishihara'];
+    var checkboxes = members.map(function(m) {
+      var name = m.first + ' ' + m.last;
+      var checked = allowed.indexOf(name) !== -1 ? 'checked' : '';
+      return '<label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;cursor:pointer">' +
+        '<input type="checkbox" data-section="' + sec.key + '" data-name="' + esc(name) + '" ' + checked + ' style="width:15px;height:15px;cursor:pointer">' +
+        '<span>' + esc(name) + '</span>' +
+        '<span style="font-size:10px;color:var(--dim);margin-left:2px">' + esc(m.role) + '</span>' +
+        '</label>';
+    }).join('');
+    return '<div class="card" style="padding:16px 18px">' +
+      '<div style="font-family:var(--serif);font-size:15px;font-weight:600;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)">' +
+        sec.icon + ' ' + sec.label +
+      '</div>' +
+      '<div style="margin-bottom:8px">' +
+        '<label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;opacity:0.5">' +
+          '<input type="checkbox" checked disabled style="width:15px;height:15px">' +
+          '<span>Prof. Nishihara</span><span style="font-size:10px;color:var(--dim);margin-left:2px">PI — always</span>' +
+        '</label>' +
+        checkboxes +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function savePermissions() {
+  var perms = {};
+  PERM_SECTIONS.forEach(function(sec) {
+    perms[sec.key] = ['Prof. Nishihara']; // PI always included
+    document.querySelectorAll('input[data-section="' + sec.key + '"]:checked').forEach(function(cb) {
+      perms[sec.key].push(cb.getAttribute('data-name'));
+    });
+  });
+  S.permissions = perms;
+  save();
+  applyPermissions();
+  // Re-render all sections so buttons update immediately
+  renderMembers(); renderInventory(); renderEquip(); renderTuts(); renderNB();
+  renderAnnouncements(); renderProtocols(); renderResearch(); renderPublications();
+  renderMeetings(); renderSDS(); renderOnboarding();
+  toast('Permissions saved ✓');
+}
 function exportData() {
   const data = {};
   PERSIST_KEYS.forEach(k => { data[k] = S[k]; });
@@ -4025,8 +4146,8 @@ function renderSDS(filter){
       '<td style="font-size:16px;letter-spacing:2px">'+ghsIcons+'</td>'+
       '<td>'+(s.sdsUrl?'<a href="'+esc(s.sdsUrl)+'" target="_blank" class="btn btn-ghost btn-sm" style="text-decoration:none;font-size:11.5px">View SDS ↗</a> ':'<span style="color:var(--dim);font-size:12px">No link </span>')+'<button class="btn btn-ghost btn-sm" style="font-size:11px" data-action="edit-sds-url" data-ri="'+ri+'" data-val="'+esc(s.sdsUrl||'')+'">Edit</button></td>'+
       '<td><div class="row-actions">' +
-      '<button class="btn btn-ghost btn-sm" onclick="openEditModal(\'sds\',' + ri + ')">Edit</button>' +
-      '<button class="btn btn-danger btn-sm" data-action="del-sds" data-ri="'+ri+'">✕</button></td>'+
+      (canEdit(\'sds\') ? '<button class="btn btn-ghost btn-sm" onclick="openEditModal(\'sds\',' + ri + ')">Edit</button>' : '') +
+      (canEdit(\'sds\') ? '<button class="btn btn-danger btn-sm" data-action="del-sds" data-ri="'+ri+'"' : '<span')>✕</button></td>'+
     '</tr>';
   }).join('');
   tbody.onclick=function(e){
@@ -4781,7 +4902,7 @@ function scheduleDriveSave() {
 
 // ── LOCALSTORAGE PERSISTENCE ─────────────────────────────────
 const LS_KEY = 'nishihara_lab_v1';
-const PERSIST_KEYS = ['members','inventory','equipment','tutorials','notebooks','announcements','protocols','training','research','assignments','bookings','reorderLog','usageLog','onboardingTasks','publications','meetings','sdsLibrary'];
+const PERSIST_KEYS = ['members','inventory','equipment','tutorials','notebooks','announcements','protocols','training','research','assignments','bookings','reorderLog','usageLog','onboardingTasks','publications','meetings','sdsLibrary','permissions'];
 
 function updateStorageBar() {
   try {
@@ -4945,6 +5066,8 @@ if (_ecs) _ecs.addEventListener('click', saveEditCell);
 
 // Attempt silent auto sign-in on every page load
 tryAutoSignIn();
+// Apply permissions based on current user
+applyPermissions();
 
 
 }); // end DOMContentLoaded
