@@ -1649,6 +1649,13 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
       <div class="form-group"><label class="form-label">Category</label><select class="form-input" id="ot-cat"><option>Safety</option><option>Training</option><option>Admin</option><option>Equipment</option><option>Research</option></select></div>
       <div class="form-group"><label class="form-label">Required</label><select class="form-input" id="ot-req"><option value="true">Required</option><option value="false">Optional</option></select></div>
     </div>
+    <div class="form-group"><label class="form-label">Priority</label>
+      <select class="form-input" id="ot-priority">
+        <option value="high">🔴 High — must complete in first week</option>
+        <option value="medium" selected>🟡 Medium — complete within first month</option>
+        <option value="low">🟢 Low — complete when possible</option>
+      </select>
+    </div>
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="closeModal('modal-onboard-task')">Cancel</button>
       <button class="btn btn-primary" onclick="addOnboardTask()">Add Task</button>
@@ -1762,12 +1769,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
       <div class="form-row">
         <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="book-date" type="date"></div>
         <div class="form-group"><label class="form-label">Start Time</label><select class="form-input time-select" id="book-time" data-default-time="09:00"></select></div>
-      </div>
-      <div class="form-group"><label class="form-label">Duration</label>
-        <select class="form-input" id="book-duration">
-          <option>30 minutes</option><option>1 hour</option><option selected>2 hours</option>
-          <option>3 hours</option><option>Half day</option><option>Full day</option>
-        </select>
+        <div class="form-group"><label class="form-label">End Time</label><select class="form-input time-select" id="book-time-end" data-default-time="11:00"></select></div>
       </div>
     </div>
     <div id="book-multi-panel" style="display:none">
@@ -1775,7 +1777,7 @@ textarea.form-input{resize:vertical;font-family:var(--sans);}
         <div class="form-group"><label class="form-label">Start Date</label><input class="form-input" id="book-date-start" type="date"></div>
         <div class="form-group"><label class="form-label">End Date</label><input class="form-input" id="book-date-end" type="date"></div>
       </div>
-      <div class="form-group"><label class="form-label">Daily Start Time</label><select class="form-input time-select" id="book-time-multi" data-default-time="09:00"></select></div>
+      <div class="form-row"><div class="form-group"><label class="form-label">Daily Start Time</label><select class="form-input time-select" id="book-time-multi" data-default-time="09:00"></select></div><div class="form-group"><label class="form-label">Daily End Time</label><select class="form-input time-select" id="book-time-multi-end" data-default-time="17:00"></select></div></div>
       <div id="book-multi-preview" style="font-size:12px;color:var(--mid);padding:6px 0"></div>
     </div>
     <div class="form-group"><label class="form-label">Purpose / Notes</label>
@@ -2230,6 +2232,23 @@ function initTimeSelects() {
     mtStart.addEventListener('change', function() {
       if (!mtEnd.value || timeToMinutes(mtEnd.value) <= timeToMinutes(mtStart.value)) {
         mtEnd.value = minutesToTime(timeToMinutes(mtStart.value) + 60);
+      }
+    });
+  }
+  // Booking time: auto-advance end time by 2 hours when start changes
+  var bkStart = el('book-time'), bkEnd = el('book-time-end');
+  if (bkStart && bkEnd) {
+    bkStart.addEventListener('change', function() {
+      if (!bkEnd.value || timeToMinutes(bkEnd.value) <= timeToMinutes(bkStart.value)) {
+        bkEnd.value = minutesToTime(timeToMinutes(bkStart.value) + 120);
+      }
+    });
+  }
+  var bkMStart = el('book-time-multi'), bkMEnd = el('book-time-multi-end');
+  if (bkMStart && bkMEnd) {
+    bkMStart.addEventListener('change', function() {
+      if (!bkMEnd.value || timeToMinutes(bkMEnd.value) <= timeToMinutes(bkMStart.value)) {
+        bkMEnd.value = minutesToTime(timeToMinutes(bkMStart.value) + 480);
       }
     });
   }
@@ -3265,18 +3284,21 @@ function confirmBooking() {
   if (_bookTab === 'single') {
     var date = el('book-date').value;
     var time = el('book-time') ? el('book-time').value : '09:00';
-    var duration = el('book-duration') ? el('book-duration').value : '2 hours';
+    var timeEnd = el('book-time-end') ? el('book-time-end').value : addHoursToTime(time, 2);
     if (!date) { toast('Please select a date.'); return; }
+    if (timeEnd <= time) { toast('End time must be after start time.'); return; }
+    var duration = timeEnd + ' – ' + timeEnd; // for display
     gcalUrl = createGCalBookingEvent(equip, bookedBy, date, time, notes, duration, null, openGCal);
-    S.bookings.push({id:bookingId,equipIdx:ri,bookedBy:bookedBy,date:date,time:time,duration:duration,notes:notes,active:true,multiDay:false,gcalUrl:gcalUrl,calendarSynced:openGCal});
+    S.bookings.push({id:bookingId,equipIdx:ri,bookedBy:bookedBy,date:date,time:time,timeEnd:timeEnd,duration:time+' – '+timeEnd,notes:notes,active:true,multiDay:false,gcalUrl:gcalUrl,calendarSynced:openGCal});
     S.events.push({date:date,label:equip.icon+' '+equip.name+' · '+bookedBy,cls:'cd-green',bookingRef:bookingId,gcalUrl:gcalUrl});
     syncBookingToGoogleCalendar(S.bookings[S.bookings.length - 1], equip);
-    toast(equip.name + ' booked for ' + date + ' ✓');
+    toast(equip.name + ' booked for ' + date + ' ' + time + '–' + timeEnd + ' ✓');
     addNotif('Equipment Booked', equip.name + ' reserved for ' + date + ' by ' + bookedBy, 'success');
   } else {
     var start = el('book-date-start') ? el('book-date-start').value : '';
     var end = el('book-date-end') ? el('book-date-end').value : '';
     var timeM = el('book-time-multi') ? el('book-time-multi').value : '09:00';
+    var timeMEnd = el('book-time-multi-end') ? el('book-time-multi-end').value : '17:00';
     if (!start || !end) { toast('Select start and end dates.'); return; }
     if (new Date(end) < new Date(start)) { toast('End date must be after start date.'); return; }
     var cur = new Date(start), endD = new Date(end), days = 0;
@@ -3286,7 +3308,7 @@ function confirmBooking() {
       cur.setDate(cur.getDate() + 1); days++;
     }
     gcalUrl = createGCalBookingEvent(equip, bookedBy, start, timeM, notes, days + ' days', end, openGCal);
-    S.bookings.push({id:bookingId,equipIdx:ri,bookedBy:bookedBy,date:start,dateEnd:end,time:timeM,duration:days+' days',notes:notes,active:true,multiDay:true,gcalUrl:gcalUrl,calendarSynced:openGCal});
+    S.bookings.push({id:bookingId,equipIdx:ri,bookedBy:bookedBy,date:start,dateEnd:end,time:timeM,timeEnd:timeMEnd,duration:days+' days ('+timeM+'–'+timeMEnd+')',notes:notes,active:true,multiDay:true,gcalUrl:gcalUrl,calendarSynced:openGCal});
     S.events.forEach(function(ev){ if (ev.bookingRef === bookingId) ev.gcalUrl = gcalUrl; });
     syncBookingToGoogleCalendar(S.bookings[S.bookings.length - 1], equip);
     toast(equip.name + ' booked for ' + days + ' days ✓');
@@ -3390,7 +3412,7 @@ function bookingToGoogleResource(b, equip) {
     return { summary: summary, description: description, colorId: colorId, start:{date:b.date}, end:{date:dateKey(end)} };
   }
   var startTime = b.time || '09:00';
-  var endTime = addHoursToTime(startTime, durationHours(b.duration));
+  var endTime = b.timeEnd || addHoursToTime(startTime, durationHours(b.duration));
   return {
     summary: summary,
     description: description,
@@ -4136,19 +4158,29 @@ function renderOnboarding() {
   if (!tbody) return;
   const me = S.currentUser ? S.currentUser.name : null;
 
-  // All tasks table
+  var isPI = S.currentUser && S.currentUser.role === 'PI';
+  var priorityIcon = {high:'🔴', medium:'🟡', low:'🟢'};
+  var priorityLabel = {high:'High', medium:'Medium', low:'Low'};
+
+  // All tasks table — show completed names only to PI
   tbody.innerHTML = S.onboardingTasks.map(function(t, ri) {
     const cc = OT_COLORS[t.category]||'var(--mid)', cb = OT_BG[t.category]||'var(--sand)';
     const done = me && t.completedBy && t.completedBy.includes(me);
-    const names = (t.completedBy||[]).join(', ')||'—';
+    const pri = t.priority || 'medium';
+    const priIcon = priorityIcon[pri] || '🟡';
+    // Only PI sees who completed; others only see count
+    const completedInfo = isPI
+      ? (t.completedBy||[]).join(', ')||'—'
+      : (t.completedBy||[]).length + ' / ' + S.members.length;
     return '<tr data-ri="'+ri+'">' +
       '<td><span data-action="edit-ot-task" data-ri="'+ri+'" data-val="'+esc(t.task)+'">'+esc(t.task)+'</span></td>'+
-      '<td><span class="chip editable" data-action="edit-ot-cat" data-ri="'+ri+'" data-val="'+esc(t.category)+'" style="background:'+cb+';color:'+cc+';font-size:10px">'+t.category+'</span></td>'+
-      '<td><span class="chip editable" data-action="toggle-ot-req" data-ri="'+ri+'" style="background:'+(t.required?'var(--rl)':'var(--sand2)')+';color:'+(t.required?'var(--red)':'var(--mid)')+';font-size:10px">'+(t.required?'Required':'Optional')+'</span></td>'+
-      '<td style="font-size:12px;color:var(--mid);max-width:180px">'+esc(names)+'</td>'+
+      '<td><span class="chip" style="background:'+cb+';color:'+cc+';font-size:10px">'+t.category+'</span></td>'+
+      '<td title="'+pri+'">'+priIcon+'</td>'+
+      '<td><span class="chip" data-action="toggle-ot-req" data-ri="'+ri+'" style="background:'+(t.required?'var(--rl)':'var(--sand2)')+';color:'+(t.required?'var(--red)':'var(--mid)')+';font-size:10px;cursor:pointer">'+(t.required?'Required':'Optional')+'</span></td>'+
+      '<td style="font-size:12px;color:var(--mid);max-width:180px">'+completedInfo+'</td>'+
       '<td><div style="display:flex;gap:4px">'+
         (me?'<button class="btn '+(done?'btn-ghost':'btn-primary')+' btn-sm" data-action="toggle-ot" data-ri="'+ri+'">'+(done?'✓ Done':'Mark Done')+'</button>':'')+
-        '<button class="btn btn-danger btn-sm" data-action="del-ot" data-ri="'+ri+'">✕</button>'+
+        (canEdit('onboarding')?'<button class="btn btn-danger btn-sm" data-action="del-ot" data-ri="'+ri+'">✕</button>':'')+
       '</div></td>'+
     '</tr>';
   }).join('');
@@ -4170,12 +4202,17 @@ function renderOnboarding() {
     else {
       var done=S.onboardingTasks.filter(function(t){return(t.completedBy||[]).includes(me);}).length;
       if(myPct) myPct.textContent=Math.round(done/Math.max(S.onboardingTasks.length,1)*100)+'%';
-      myList.innerHTML = S.onboardingTasks.map(function(t,ri){
+      var sortedTasks = S.onboardingTasks.slice().map(function(t,i){return {t:t,i:i};}).sort(function(a,b){var po={high:0,medium:1,low:2};return (po[a.t.priority||'medium']||1)-(po[b.t.priority||'medium']||1);});
+      myList.innerHTML = sortedTasks.map(function(obj){
+        var t=obj.t, ri=obj.i;
         var isDone=(t.completedBy||[]).includes(me);
+        var pri=t.priority||'medium';
+        var priIcon={high:'🔴',medium:'🟡',low:'🟢'}[pri]||'🟡';
         return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--sand);cursor:pointer" data-action="toggle-ot2" data-ri="'+ri+'">'+
           '<div style="width:18px;height:18px;border-radius:4px;border:2px solid '+(isDone?'var(--gm)':'var(--border2)')+';background:'+(isDone?'var(--gm)':'transparent')+';display:flex;align-items:center;justify-content:center;flex-shrink:0">'+(isDone?'<span style="color:#fff;font-size:11px;font-weight:700">✓</span>':'')+'</div>'+
-          '<span style="font-size:13px;color:'+(isDone?'var(--dim)':'var(--text)')+';text-decoration:'+(isDone?'line-through':'none')+'">'+esc(t.task)+'</span>'+
-          '<span class="chip" style="margin-left:auto;background:'+OT_BG[t.category]+';color:'+OT_COLORS[t.category]+';font-size:9.5px;flex-shrink:0">'+t.category+'</span>'+
+          '<span style="font-size:13px;color:'+(isDone?'var(--dim)':'var(--text)')+';text-decoration:'+(isDone?'line-through':'none')+';flex:1">'+esc(t.task)+'</span>'+
+          '<span title="'+pri+'" style="font-size:12px">'+priIcon+'</span>'+
+          '<span class="chip" style="background:'+OT_BG[t.category]+';color:'+OT_COLORS[t.category]+';font-size:9.5px;flex-shrink:0">'+t.category+'</span>'+
         '</div>';
       }).join('');
       myList.onclick=function(e){var t=e.target.closest('[data-action="toggle-ot2"]');if(t)toggleOnboardTask(parseInt(t.dataset.ri));};
@@ -4212,7 +4249,8 @@ function toggleOnboardTask(ri) {
 function addOnboardTask() {
   var task=el('ot-task').value.trim(); if(!task){toast('Enter task.');return;}
   var maxId=S.onboardingTasks.reduce(function(m,t){return Math.max(m,t.id);},0);
-  S.onboardingTasks.push({id:maxId+1,task:task,category:el('ot-cat').value,required:el('ot-req').value==='true',completedBy:[]});
+  var priority = el('ot-priority') ? el('ot-priority').value : 'medium';
+  S.onboardingTasks.push({id:maxId+1,task:task,category:el('ot-cat').value,required:el('ot-req').value==='true',priority:priority,completedBy:[]});
   renderOnboarding();save();closeModal('modal-onboard-task');el('ot-task').value='';toast('Task added ✓');
 }
 
@@ -4702,14 +4740,16 @@ function meetingToGoogleResource(m) {
   return {
     summary: meetingTitle(m),
     description: desc,
+    colorId: '3', // Grape — distinct from equipment bookings
     start: { dateTime: m.date + 'T' + (m.time || '10:00') + ':00', timeZone: 'Asia/Tokyo' },
     end: { dateTime: m.date + 'T' + (m.endTime || '11:00') + ':00', timeZone: 'Asia/Tokyo' }
   };
 }
 
 async function syncMeetingToGoogleCalendar(m) {
-  if (!gcalAccessToken || m.gcalEventId) {
-    if (!gcalAccessToken) openModal('modal-gcal-auth');
+  if (m.gcalEventId) return; // already synced
+  if (!gcalAccessToken) {
+    // Not signed in — will be synced automatically on next login (handled in token callback)
     return;
   }
   try {
@@ -4723,7 +4763,7 @@ async function syncMeetingToGoogleCalendar(m) {
     }
   } catch(err) {
     console.error('Meeting Google sync failed', err);
-    toast('Meeting saved locally. Google sync failed.');
+    toast('Meeting saved. Google Calendar sync failed — will retry on next login.');
   }
 }
 
